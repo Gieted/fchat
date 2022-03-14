@@ -22,7 +22,7 @@ public class Main {
         Properties clientProperties = readProperties(path);
         String username = clientProperties.getProperty("username");
 
-        return new ClientProperties(username);
+        return new ClientProperties(new Name(username));
     }
 
     public static ChannelProperties readChannelProperties(Path path) throws IOException {
@@ -63,6 +63,7 @@ public class Main {
             System.out.println(
                     """
                             commands:
+                              fchat init
                               fchat create
                               fchat send
                               fchat read
@@ -89,7 +90,7 @@ public class Main {
 
                 String message = String.join(" ", Arrays.asList(args).subList(1, args.length));
                 SendMessagePacket sendMessagePacket = new SendMessagePacket(
-                        new Name(clientProperties.username()),
+                        clientProperties.username(),
                         UUID.fromString(channelProperties.id()),
                         message
                 );
