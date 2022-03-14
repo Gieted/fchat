@@ -34,4 +34,16 @@ public class ExceptionHandler {
         printError("Please provide a message");
         System.exit(3);
     }
+
+    public void onCannotSaveClientProperties() {
+        checkDevMode();
+        printError("Cannot save client properties. Is the file opened by another program?");
+        System.exit(4);
+    }
+
+    public void onInitCalledInFChatDirectory() {
+        checkDevMode();
+        printError("This is already an fchat directory");
+        System.exit(5);
+    }
 }

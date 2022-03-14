@@ -3,6 +3,7 @@ package pl.pawelkielb.fchat.client;
 import pl.pawelkielb.fchat.client.packets.SendMessagePacket;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -38,32 +39,6 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        boolean isDevModeEnabled = System.getProperty("DEV_MODE") != null;
-        ExceptionHandler exceptionHandler = new ExceptionHandler(isDevModeEnabled);
-        PacketEncoder packetEncoder = new PacketEncoder();
-
-        Path clientPropertiesPath = Paths.get("fchat.properties");
-        Path channelPropertiesPath = Paths.get("channel.properties");
-        ClientProperties clientProperties;
-        ChannelProperties channelProperties = null;
-        try {
-            clientProperties = readClientProperties(clientPropertiesPath);
-        } catch (NoSuchFileException e) {
-            try {
-                clientProperties = readClientProperties(Paths.get("..").resolve(clientPropertiesPath));
-                channelProperties = readChannelProperties(channelPropertiesPath);
-            } catch (NoSuchFileException e1) {
-                exceptionHandler.onClientPropertiesNotFound();
-                return;
-            } catch (IOException e1) {
-                e.printStackTrace();
-                return;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-
         if (args.length == 0) {
             System.out.println(
                     """
@@ -80,7 +55,54 @@ public class Main {
             System.exit(0);
         }
 
+        boolean isDevModeEnabled = System.getProperty("DEV_MODE") != null;
+        ExceptionHandler exceptionHandler = new ExceptionHandler(isDevModeEnabled);
+        PacketEncoder packetEncoder = new PacketEncoder();
+
+        Path clientPropertiesPath = Paths.get("fchat.properties");
+        Path channelPropertiesPath = Paths.get("channel.properties");
+
+        ClientProperties clientProperties = null;
+        ChannelProperties channelProperties = null;
+        try {
+            clientProperties = readClientProperties(clientPropertiesPath);
+        } catch (NoSuchFileException e) {
+            try {
+                clientProperties = readClientProperties(Paths.get("..").resolve(clientPropertiesPath));
+                channelProperties = readChannelProperties(channelPropertiesPath);
+            } catch (NoSuchFileException ignore) {
+            } catch (IOException e1) {
+                e.printStackTrace();
+                return;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
         String command = args[0];
+
+        if (command.equals("init")) {
+            if (clientProperties != null) {
+                exceptionHandler.onInitCalledInFChatDirectory();
+            }
+
+            ClientProperties defaultClientProperties = ClientProperties.defaults();
+            Properties properties = new Properties();
+            properties.setProperty("username", defaultClientProperties.username().value());
+            properties.setProperty("server_host", defaultClientProperties.serverHost());
+            properties.setProperty("server_port", String.valueOf(defaultClientProperties.serverPort()));
+            try (OutputStream outputStream = Files.newOutputStream(clientPropertiesPath)) {
+                properties.store(outputStream, null);
+            } catch (IOException e) {
+                exceptionHandler.onCannotSaveClientProperties();
+            }
+        } else {
+            if (clientProperties == null) {
+                exceptionHandler.onClientPropertiesNotFound();
+            }
+        }
+
         switch (command) {
             case "send" -> {
                 if (args.length < 2) {
