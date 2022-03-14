@@ -1,0 +1,9 @@
+plugins {
+    java
+}
+
+repositories {
+}
+
+dependencies {
+}
