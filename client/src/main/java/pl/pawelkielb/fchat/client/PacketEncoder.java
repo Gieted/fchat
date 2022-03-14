@@ -2,28 +2,30 @@ package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.client.packets.*;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 public class PacketEncoder {
-    
+
     public byte[] toBytes(Packet packet) {
         byte[] packetBytes;
         if (packet instanceof SendMessagePacket sendMessagePacket) {
             packetBytes = toBytes(sendMessagePacket);
         } else if (packet instanceof RequestMessagesPacket requestMessagesPacket) {
             packetBytes = toBytes(requestMessagesPacket);
-        } else if (packet instanceof NotifyPacket notifyPacket) {
-            packetBytes = toBytes(notifyPacket);
-        } else if (packet instanceof BulkNotifyPacket bulkNotifyPacket) {
-            packetBytes = toBytes(bulkNotifyPacket);
+        } else if (packet instanceof UpdateChannelPacket updateChannelPacket) {
+            packetBytes = toBytes(updateChannelPacket);
         } else if (packet instanceof RequestLivePacket requestLivePacket) {
             packetBytes = toBytes(requestLivePacket);
         } else if (packet instanceof AcknowledgePacket acknowledgePacket) {
             packetBytes = toBytes(acknowledgePacket);
+        } else if (packet instanceof EndPacket) {
+            packetBytes = emptyPacket("End");
         } else {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("This packet type is not supported");
         }
 
         return packetBytes;
@@ -61,30 +63,13 @@ public class PacketEncoder {
         return packetString.getBytes();
     }
 
-    public byte[] toBytes(NotifyPacket packet) {
+    public byte[] toBytes(UpdateChannelPacket packet) {
         Properties properties = new Properties();
-        properties.setProperty("type", "Notify");
+        properties.setProperty("type", "UpdateChannel");
         properties.setProperty("packet_id", packet.packetId().toString());
         properties.setProperty("channel_id", packet.channelId().toString());
         properties.setProperty("channel_name", packet.channelName().value());
-        properties.setProperty("recipient", packet.recipient());
-        String packetString = propertiesToString(properties);
-
-        return packetString.getBytes();
-    }
-
-    public byte[] toBytes(BulkNotifyPacket packet) {
-        Properties properties = new Properties();
-        properties.setProperty("type", "BulkNotify");
-        properties.setProperty("count", String.valueOf(packet.notifyPackets().size()));
-        int i = 0;
-        for (var notifyPacket : packet.notifyPackets()) {
-            properties.setProperty("packet_id" + i, notifyPacket.packetId().toString());
-            properties.setProperty("channel_id" + i, notifyPacket.channelId().toString());
-            properties.setProperty("channel_name" + i, notifyPacket.channelName().value());
-            properties.setProperty("recipient" + i, notifyPacket.recipient());
-            i++;
-        }
+        properties.setProperty("recipient", packet.recipient().value());
         String packetString = propertiesToString(properties);
 
         return packetString.getBytes();
@@ -103,6 +88,15 @@ public class PacketEncoder {
         Properties properties = new Properties();
         properties.setProperty("type", "Acknowledge");
         properties.setProperty("packet_id", packet.packetId().toString());
+        String packetString = propertiesToString(properties);
+
+        return packetString.getBytes();
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private byte[] emptyPacket(String type) {
+        Properties properties = new Properties();
+        properties.setProperty("type", type);
         String packetString = propertiesToString(properties);
 
         return packetString.getBytes();

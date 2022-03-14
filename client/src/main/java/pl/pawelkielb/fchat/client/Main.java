@@ -1,7 +1,7 @@
 package pl.pawelkielb.fchat.client;
 
-import pl.pawelkielb.fchat.client.packets.NotifyPacket;
 import pl.pawelkielb.fchat.client.packets.SendMessagePacket;
+import pl.pawelkielb.fchat.client.packets.UpdateChannelPacket;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -171,13 +171,13 @@ public class Main {
                 }
 
                 for (var member : members) {
-                    NotifyPacket notifyPacket = new NotifyPacket(
+                    UpdateChannelPacket updateChannelPacket = new UpdateChannelPacket(
                             createdChannelProperties.id(),
                             createdChannelProperties.name(),
                             member
                     );
                     try {
-                        connection.send(notifyPacket);
+                        connection.send(updateChannelPacket);
                     } catch (IOException e) {
                         exceptionHandler.onNetworkException();
                     }
