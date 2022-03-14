@@ -26,7 +26,7 @@ public class Main {
         String serverHost = clientProperties.getProperty("server_host");
         int serverPort = Integer.parseInt(clientProperties.getProperty("server_port"));
 
-        return new ClientProperties(new Name(username), serverHost, serverPort);
+        return new ClientProperties(Name.of(username), serverHost, serverPort);
     }
 
     public static ChannelProperties readChannelProperties(Path path) throws IOException {
