@@ -8,10 +8,10 @@ public record NotifyPacket(
         UUID packetId,
         UUID channelId,
         Name channelName,
-        String recipient
+        Name recipient
 ) implements Packet {
 
-    public NotifyPacket(Name channelName, String recipient) {
-        this(UUID.randomUUID(), UUID.randomUUID(), channelName, recipient);
+    public NotifyPacket(UUID channelId, Name channelName, Name recipient) {
+        this(UUID.randomUUID(), channelId, channelName, recipient);
     }
 }

@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.client.packets.NotifyPacket;
 import pl.pawelkielb.fchat.client.packets.SendMessagePacket;
 
 import java.io.IOException;
@@ -8,9 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 
 public class Main {
     public static Properties readProperties(Path path) throws IOException {
@@ -18,6 +17,12 @@ public class Main {
         try (var clientPropertiesReader = Files.newBufferedReader(path)) {
             properties.load(clientPropertiesReader);
             return properties;
+        }
+    }
+
+    public static void writeProperties(Path path, Properties properties) throws IOException {
+        try (OutputStream outputStream = Files.newOutputStream(path)) {
+            properties.store(outputStream, null);
         }
     }
 
@@ -35,7 +40,12 @@ public class Main {
         String channelId = channelProperties.getProperty("id");
         String channelName = channelProperties.getProperty("name");
 
-        return new ChannelProperties(channelId, channelName);
+        return new ChannelProperties(UUID.fromString(channelId), Name.of(channelName));
+    }
+
+
+    public static String sanitizeAsPath(String string) {
+        return string.replaceAll("[^a-zA-z ]", "");
     }
 
     public static void main(String[] args) {
@@ -50,7 +60,8 @@ public class Main {
                               fchat sync
                               fchat sendfile
                               fchat download
-                              fchat live"""
+                              fchat live
+                              fchat add"""
             );
             System.exit(0);
         }
@@ -84,7 +95,7 @@ public class Main {
 
         if (command.equals("init")) {
             if (clientProperties != null) {
-                exceptionHandler.onInitCalledInFChatDirectory();
+                exceptionHandler.onInitCalledInFchatDirectory();
             }
 
             ClientProperties defaultClientProperties = ClientProperties.defaults();
@@ -92,18 +103,87 @@ public class Main {
             properties.setProperty("username", defaultClientProperties.username().value());
             properties.setProperty("server_host", defaultClientProperties.serverHost());
             properties.setProperty("server_port", String.valueOf(defaultClientProperties.serverPort()));
-            try (OutputStream outputStream = Files.newOutputStream(clientPropertiesPath)) {
-                properties.store(outputStream, null);
+            try {
+                writeProperties(clientPropertiesPath, properties);
             } catch (IOException e) {
                 exceptionHandler.onCannotSaveClientProperties();
             }
+            System.exit(0);
         } else {
             if (clientProperties == null) {
                 exceptionHandler.onClientPropertiesNotFound();
+                return;
             }
         }
 
+        // client properties cannot be null at this point
+
+        Connection connection = new Connection(
+                clientProperties.serverHost(),
+                clientProperties.serverPort(),
+                packetEncoder
+        );
+
         switch (command) {
+            case "create" -> {
+                if (channelProperties != null) {
+                    exceptionHandler.onCommandUsedInChannelDirectory();
+                }
+
+                String directoryName;
+                Set<Name> members;
+                Name channelName;
+
+                if (args.length == 2) {
+                    Name recipient = Name.of(args[1]);
+                    directoryName = sanitizeAsPath(recipient.value());
+                    members = new HashSet<>();
+                    members.add(recipient);
+                    channelName = null;
+                } else {
+                    channelName = Name.of(args[1]);
+                    directoryName = sanitizeAsPath(channelName.value());
+                    var memberNames = Arrays.asList(args)
+                            .subList(2, args.length)
+                            .stream()
+                            .map(Name::of)
+                            .toList();
+
+                    members = new HashSet<>(memberNames);
+                }
+
+                Path directory = Paths.get(".", directoryName);
+                try {
+                    Files.createDirectory(directory);
+                } catch (IOException e) {
+                    exceptionHandler.onCannotWriteFile(directory);
+                }
+
+                ChannelProperties createdChannelProperties = new ChannelProperties(channelName);
+                Properties properties = new Properties();
+                properties.setProperty("id", createdChannelProperties.id().toString());
+                properties.setProperty("name", createdChannelProperties.name().value());
+                Path createdChannelPropertiesPath = directory.resolve(channelPropertiesPath);
+                try {
+                    writeProperties(createdChannelPropertiesPath, properties);
+                } catch (IOException e) {
+                    exceptionHandler.onCannotWriteFile(createdChannelPropertiesPath);
+                }
+
+                for (var member : members) {
+                    NotifyPacket notifyPacket = new NotifyPacket(
+                            createdChannelProperties.id(),
+                            createdChannelProperties.name(),
+                            member
+                    );
+                    try {
+                        connection.send(notifyPacket);
+                    } catch (IOException e) {
+                        exceptionHandler.onNetworkException();
+                    }
+                }
+            }
+
             case "send" -> {
                 if (args.length < 2) {
                     exceptionHandler.onMessageNotProvided();
@@ -118,14 +198,8 @@ public class Main {
                 String message = String.join(" ", Arrays.asList(args).subList(1, args.length));
                 SendMessagePacket sendMessagePacket = new SendMessagePacket(
                         clientProperties.username(),
-                        UUID.fromString(channelProperties.id()),
+                        channelProperties.id(),
                         message
-                );
-
-                Connection connection = new Connection(
-                        clientProperties.serverHost(),
-                        clientProperties.serverPort(),
-                        packetEncoder
                 );
 
                 try {

@@ -1,5 +1,7 @@
 package pl.pawelkielb.fchat.client;
 
+import java.nio.file.Path;
+
 public class ExceptionHandler {
     private final boolean isDevModeEnabled;
 
@@ -41,9 +43,27 @@ public class ExceptionHandler {
         System.exit(4);
     }
 
-    public void onInitCalledInFChatDirectory() {
+    public void onInitCalledInFchatDirectory() {
         checkDevMode();
         printError("This is already an fchat directory");
         System.exit(5);
+    }
+
+    public void onCommandUsedInChannelDirectory() {
+        checkDevMode();
+        printError("This command can only be used in fchat's root directory");
+        System.exit(6);
+    }
+
+    public void onCannotWriteFile(Path path) {
+        checkDevMode();
+        printError(String.format("Cannot write a file (%s)", path.toAbsolutePath()));
+        System.exit(7);
+    }
+
+    public void onNetworkException() {
+        checkDevMode();
+        printError("There was an error while sending data");
+        System.exit(8);
     }
 }
