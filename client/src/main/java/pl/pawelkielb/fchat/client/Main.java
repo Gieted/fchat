@@ -38,7 +38,8 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        ExceptionHandler exceptionHandler = new ExceptionHandler();
+        boolean isDevModeEnabled = System.getProperty("DEV_MODE") != null;
+        ExceptionHandler exceptionHandler = new ExceptionHandler(isDevModeEnabled);
         PacketEncoder packetEncoder = new PacketEncoder();
 
         Path clientPropertiesPath = Paths.get("fchat.properties");
