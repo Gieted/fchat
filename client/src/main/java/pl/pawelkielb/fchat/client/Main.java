@@ -7,7 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Properties;
+import java.util.UUID;
 
 public class Main {
     public static Properties readProperties(Path path) throws IOException {
@@ -21,8 +23,10 @@ public class Main {
     public static ClientProperties readClientProperties(Path path) throws IOException {
         Properties clientProperties = readProperties(path);
         String username = clientProperties.getProperty("username");
+        String serverHost = clientProperties.getProperty("server_host");
+        int serverPort = Integer.parseInt(clientProperties.getProperty("server_port"));
 
-        return new ClientProperties(new Name(username));
+        return new ClientProperties(new Name(username), serverHost, serverPort);
     }
 
     public static ChannelProperties readChannelProperties(Path path) throws IOException {
@@ -32,7 +36,7 @@ public class Main {
 
         return new ChannelProperties(channelId, channelName);
     }
-    
+
     public static void main(String[] args) {
         ExceptionHandler exceptionHandler = new ExceptionHandler();
         PacketEncoder packetEncoder = new PacketEncoder();
@@ -95,7 +99,12 @@ public class Main {
                         message
                 );
 
-                Connection connection = new Connection("localhost", 8080, packetEncoder);
+                Connection connection = new Connection(
+                        clientProperties.serverHost(),
+                        clientProperties.serverPort(),
+                        packetEncoder
+                );
+
                 try {
                     connection.connect();
                     connection.send(sendMessagePacket);
