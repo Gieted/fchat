@@ -22,8 +22,6 @@ public class PacketEncoder {
             packetBytes = toBytes(requestLivePacket);
         } else if (packet instanceof AcknowledgePacket acknowledgePacket) {
             packetBytes = toBytes(acknowledgePacket);
-        } else if (packet instanceof EndPacket) {
-            packetBytes = emptyPacket("End");
         } else {
             throw new IllegalArgumentException("This packet type is not supported");
         }
@@ -88,15 +86,6 @@ public class PacketEncoder {
         Properties properties = new Properties();
         properties.setProperty("type", "Acknowledge");
         properties.setProperty("packet_id", packet.packetId().toString());
-        String packetString = propertiesToString(properties);
-
-        return packetString.getBytes();
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private byte[] emptyPacket(String type) {
-        Properties properties = new Properties();
-        properties.setProperty("type", type);
         String packetString = propertiesToString(properties);
 
         return packetString.getBytes();

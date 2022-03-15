@@ -29,10 +29,14 @@ public class Connection {
 
     public void send(Packet packet) throws IOException {
         checkConnection();
-        
+
         byte[] bytes = packetEncoder.toBytes(packet);
         socket.getOutputStream().write(bytes.length);
         socket.getOutputStream().write(bytes);
+    }
+
+    public void sendNull() throws IOException {
+        socket.getOutputStream().write(0);
     }
 
     public void read() {
