@@ -21,22 +21,28 @@ public class Client {
         this.clientConfig = clientConfig;
     }
 
+
+    public static String sanitizeAsPath(String string) {
+        return string.replaceAll("[^a-zA-z ]", "");
+    }
+
     public void init(Path directory) {
         ClientConfig defaultClientConfig = ClientConfig.defaults();
         Config.saveClientConfig(directory, defaultClientConfig);
     }
 
-    public void createPrivateChannel(Path directory, Name recipient) {
-
+    public void createPrivateChannel(Path directory, Name recipient) throws IOException {
+        createGroupChannel(directory, recipient, List.of(recipient));
     }
 
     public void createGroupChannel(Path directory, Name name, List<Name> members) throws IOException {
         connection.connect();
 
+        Path path = directory.resolve(sanitizeAsPath(name.value()));
         try {
-            Files.createDirectory(directory);
+            Files.createDirectory(path);
         } catch (IOException e) {
-            throw new FileWriteException(directory);
+            throw new FileWriteException(path);
         }
 
         ChannelConfig channelConfig = new ChannelConfig(name);

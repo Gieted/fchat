@@ -9,11 +9,6 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public abstract class Commands {
-
-    public static String sanitizeAsPath(String string) {
-        return string.replaceAll("[^a-zA-z ]", "");
-    }
-
     public static void execute(String command,
                                List<String> args,
                                ClientConfig clientConfig,
@@ -51,7 +46,11 @@ public abstract class Commands {
 
                 if (args.size() == 1) {
                     Name recipient = Name.of(args.get(0));
-                    client.createPrivateChannel(path, recipient);
+                    try {
+                        client.createPrivateChannel(path, recipient);
+                    } catch (IOException e) {
+                        ExceptionHandler.onNetworkException();
+                    }
                 } else {
                     var members = args
                             .subList(1, args.size())
