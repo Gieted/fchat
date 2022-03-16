@@ -29,7 +29,7 @@ public class Client {
     }
 
     public static String sanitizeAsPath(String string) {
-        return string.replaceAll("[^a-zA-z ]", "");
+        return string.replaceAll("[^0-9a-zA-z ]", "");
     }
 
     public void init(Path directory) {
