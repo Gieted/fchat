@@ -55,7 +55,7 @@ public class Client {
         ChannelConfig channelConfig = new ChannelConfig(name);
         Config.saveChannelConfig(directory, channelConfig);
         for (var member : members) {
-            UpdateChannelPacket updateChannelPacket = new UpdateChannelPacket(
+            UpdateChannelPacket updateChannelPacket = UpdateChannelPacket.withRandomUUID(
                     channelConfig.id(),
                     channelConfig.name(),
                     member
