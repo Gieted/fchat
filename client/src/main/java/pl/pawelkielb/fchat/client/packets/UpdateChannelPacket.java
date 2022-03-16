@@ -11,7 +11,7 @@ public record UpdateChannelPacket(
         Name recipient
 ) implements Packet {
 
-    public static UpdateChannelPacket withRandomUUID(UUID channelId, Name channelName, Name recipient) {
+    public static UpdateChannelPacket withRandomId(UUID channelId, Name channelName, Name recipient) {
         return new UpdateChannelPacket(UUID.randomUUID(), channelId, channelName, recipient);
     }
 }

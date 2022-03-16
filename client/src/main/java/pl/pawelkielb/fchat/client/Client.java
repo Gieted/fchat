@@ -28,7 +28,6 @@ public class Client {
         this.connection = connection;
     }
 
-
     public static String sanitizeAsPath(String string) {
         return string.replaceAll("[^a-zA-z ]", "");
     }
@@ -38,6 +37,30 @@ public class Client {
         Config.saveClientConfig(directory, defaultClientConfig);
     }
 
+    public void sync(Path rootDirectory) throws IOException {
+        connection.connect();
+
+        Packet packet;
+        do {
+            packet = connection.read();
+            if (packet instanceof UpdateChannelPacket updateChannelPacket) {
+                createChannelDirectory(rootDirectory, updateChannelPacket.channelId(), updateChannelPacket.channelName());
+            }
+        } while (packet != null);
+    }
+
+    private static void createChannelDirectory(Path parentDir, UUID id, Name name) {
+        Path path = parentDir.resolve(sanitizeAsPath(name.value()));
+        try {
+            Files.createDirectory(path);
+        } catch (IOException e) {
+            throw new FileWriteException(path);
+        }
+
+        ChannelConfig channelConfig = new ChannelConfig(id, name);
+        Config.saveChannelConfig(parentDir, channelConfig);
+    }
+
     public void createPrivateChannel(Path directory, Name recipient) throws IOException {
         createGroupChannel(directory, recipient, List.of(recipient));
     }
@@ -45,19 +68,13 @@ public class Client {
     public void createGroupChannel(Path directory, Name name, List<Name> members) throws IOException {
         connection.connect();
 
-        Path path = directory.resolve(sanitizeAsPath(name.value()));
-        try {
-            Files.createDirectory(path);
-        } catch (IOException e) {
-            throw new FileWriteException(path);
-        }
+        UUID channelId = UUID.randomUUID();
+        createChannelDirectory(directory, channelId, name);
 
-        ChannelConfig channelConfig = new ChannelConfig(name);
-        Config.saveChannelConfig(directory, channelConfig);
         for (var member : members) {
-            UpdateChannelPacket updateChannelPacket = UpdateChannelPacket.withRandomUUID(
-                    channelConfig.id(),
-                    channelConfig.name(),
+            UpdateChannelPacket updateChannelPacket = UpdateChannelPacket.withRandomId(
+                    channelId,
+                    name,
                     member
             );
             connection.send(updateChannelPacket);
@@ -76,6 +93,8 @@ public class Client {
     }
 
     public Stream<Message> readMessages(UUID channel, int count) throws IOException {
+        connection.connect();
+
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
         connection.send(requestMessagesPacket);
 

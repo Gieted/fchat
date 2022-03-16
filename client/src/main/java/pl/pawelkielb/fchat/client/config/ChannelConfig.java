@@ -9,7 +9,7 @@ public record ChannelConfig(
         Name name
 ) {
 
-    public ChannelConfig(Name name) {
-        this(UUID.randomUUID(), name);
+    public static ChannelConfig withRandomId(Name name) {
+        return new ChannelConfig(UUID.randomUUID(), name);
     }
 }

@@ -46,6 +46,17 @@ public abstract class Commands {
 
         // client properties cannot be null at this point
 
+        try {
+            if (channelConfig == null) {
+                client.sync(Paths.get("."));
+            } else {
+                client.sync(Paths.get(".."));
+            }
+        } catch (IOException e) {
+            ExceptionHandler.onNetworkException();
+        }
+
+
         switch (command) {
             case "create" -> {
                 if (channelConfig != null) {
