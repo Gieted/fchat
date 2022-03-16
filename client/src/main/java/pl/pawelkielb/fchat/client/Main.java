@@ -24,8 +24,7 @@ public class Main {
                               fchat sync
                               fchat sendfile
                               fchat download
-                              fchat live
-                              fchat add"""
+                              fchat live"""
             );
             System.exit(0);
         }
