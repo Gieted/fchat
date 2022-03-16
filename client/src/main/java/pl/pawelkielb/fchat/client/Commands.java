@@ -2,6 +2,7 @@ package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
+import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 
 import java.io.IOException;
 import java.nio.file.Path;

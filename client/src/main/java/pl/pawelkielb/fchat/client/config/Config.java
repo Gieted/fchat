@@ -1,8 +1,8 @@
 package pl.pawelkielb.fchat.client.config;
 
-import pl.pawelkielb.fchat.client.FileReadException;
-import pl.pawelkielb.fchat.client.FileWriteException;
 import pl.pawelkielb.fchat.client.Name;
+import pl.pawelkielb.fchat.client.exceptions.FileReadException;
+import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 
 import java.io.IOException;
 import java.io.OutputStream;

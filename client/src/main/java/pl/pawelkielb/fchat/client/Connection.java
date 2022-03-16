@@ -3,7 +3,10 @@ package pl.pawelkielb.fchat.client;
 import pl.pawelkielb.fchat.client.packets.Packet;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 
 public class Connection {
     private Socket socket;
@@ -27,19 +30,41 @@ public class Connection {
         }
     }
 
+    private static int intFromBytes(byte[] bytes) {
+        return ByteBuffer.wrap(bytes).getInt();
+    }
+
+    private static byte[] intToBytes(int integer) {
+        return ByteBuffer.allocate(4).putInt(integer).array();
+    }
+
     public void send(Packet packet) throws IOException {
         checkConnection();
 
-        byte[] bytes = packetEncoder.toBytes(packet);
-        socket.getOutputStream().write(bytes.length);
-        socket.getOutputStream().write(bytes);
+        OutputStream outputStream = socket.getOutputStream();
+
+        if (packet == null) {
+            outputStream.write(0);
+        }
+
+        byte[] packetBytes = packetEncoder.toBytes(packet);
+        outputStream.write(intToBytes(packetBytes.length));
+        socket.getOutputStream().write(packetBytes);
     }
 
-    public void sendNull() throws IOException {
-        socket.getOutputStream().write(0);
-    }
-
-    public void read() {
+    public Packet read() throws IOException {
         checkConnection();
+
+        InputStream input = socket.getInputStream();
+        int packetSize = intFromBytes(input.readNBytes(4));
+
+        // null packet
+        if (packetSize == 0) {
+            return null;
+        }
+
+        byte[] packetBytes = input.readNBytes(packetSize);
+
+        return packetEncoder.decode(packetBytes);
     }
 }

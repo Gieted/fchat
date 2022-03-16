@@ -1,11 +1,11 @@
-package pl.pawelkielb.fchat.client;
+package pl.pawelkielb.fchat.client.exceptions;
 
 import java.nio.file.Path;
 
-public class FileWriteException extends RuntimeException {
+public class FileReadException extends RuntimeException {
     private final Path path;
 
-    public FileWriteException(Path path) {
+    public FileReadException(Path path) {
         this.path = path;
     }
 

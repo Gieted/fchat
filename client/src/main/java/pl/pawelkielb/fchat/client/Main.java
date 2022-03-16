@@ -3,12 +3,13 @@ package pl.pawelkielb.fchat.client;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.config.Config;
+import pl.pawelkielb.fchat.client.exceptions.FileReadException;
 
 import java.util.Arrays;
 import java.util.List;
 
 public class Main {
-    public static boolean DEV_MODE = System.getProperty("DEV_MODE") != null;
+    public static final boolean DEV_MODE = System.getProperty("DEV_MODE") != null;
 
     public static void main(String[] args) {
         if (args.length == 0) {
