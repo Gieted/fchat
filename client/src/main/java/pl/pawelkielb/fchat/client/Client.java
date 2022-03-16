@@ -4,6 +4,8 @@ import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.config.Config;
 import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
+import pl.pawelkielb.fchat.client.packets.Packet;
+import pl.pawelkielb.fchat.client.packets.RequestMessagesPacket;
 import pl.pawelkielb.fchat.client.packets.SendMessagePacket;
 import pl.pawelkielb.fchat.client.packets.UpdateChannelPacket;
 
@@ -12,14 +14,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import static pl.pawelkielb.fchat.client.Exceptions.u;
 
 public class Client {
     private final Connection connection;
-    private final ClientConfig clientConfig;
 
-    public Client(Connection connection, ClientConfig clientConfig) {
+    public Client(Connection connection) {
         this.connection = connection;
-        this.clientConfig = clientConfig;
     }
 
 
@@ -58,15 +62,28 @@ public class Client {
         }
     }
 
-    public void sendMessage(UUID channel, String message) throws IOException {
+    public void sendMessage(UUID channel, Message message) throws IOException {
         connection.connect();
 
         SendMessagePacket sendMessagePacket = new SendMessagePacket(
-                clientConfig.username(),
                 channel,
                 message
         );
 
         connection.send(sendMessagePacket);
+    }
+
+    public Stream<Message> readMessages(UUID channel, int count) throws IOException {
+        RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
+        connection.send(requestMessagesPacket);
+
+        return IntStream.range(0, count).mapToObj(u((i) -> {
+            while (true) {
+                Packet packet = connection.read();
+                if (packet instanceof SendMessagePacket sendMessagePacket) {
+                    return sendMessagePacket.message();
+                }
+            }
+        }));
     }
 }

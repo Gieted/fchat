@@ -45,9 +45,9 @@ public class PacketEncoder {
     public byte[] toBytes(SendMessagePacket packet) {
         Properties properties = new Properties();
         properties.setProperty("type", "SendMessage");
-        properties.setProperty("author", packet.author().value());
+        properties.setProperty("author", packet.message().author().value());
         properties.setProperty("channel", packet.channel().toString());
-        properties.setProperty("message", packet.message());
+        properties.setProperty("message", packet.message().content());
         String packetString = propertiesToString(properties);
 
         return packetString.getBytes();
@@ -112,7 +112,7 @@ public class PacketEncoder {
                 UUID channel = UUID.fromString(properties.getProperty("channel"));
                 String message = properties.getProperty("message");
 
-                yield new SendMessagePacket(author, channel, message);
+                yield new SendMessagePacket(channel, new Message(author, message));
             }
 
             case "RequestMessages" -> {

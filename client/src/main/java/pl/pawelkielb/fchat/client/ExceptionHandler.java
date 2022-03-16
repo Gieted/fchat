@@ -60,4 +60,10 @@ public abstract class ExceptionHandler {
         printError("There was an error while sending data");
         System.exit(8);
     }
+
+    public static void onIllegalArgument(String message) {
+        checkDevMode();
+        printError(message);
+        System.exit(9);
+    }
 }

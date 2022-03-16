@@ -10,11 +10,17 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public abstract class Commands {
+    private static void printMessage(Console console, Message message) {
+        console.println(String.format("%s: %s", message.author(), message.content()));
+        console.println();
+    }
+
     public static void execute(String command,
                                List<String> args,
                                ClientConfig clientConfig,
                                ChannelConfig channelConfig,
-                               Client client) {
+                               Client client,
+                               Console console) {
 
         if (command.equals("init")) {
             if (clientConfig != null) {
@@ -80,7 +86,7 @@ public abstract class Commands {
 
                 String message = String.join(" ", args.subList(1, args.size()));
                 try {
-                    client.sendMessage(channelConfig.id(), message);
+                    client.sendMessage(channelConfig.id(), new Message(clientConfig.username(), message));
                 } catch (IOException e) {
                     ExceptionHandler.onNetworkException();
                 }
@@ -89,6 +95,22 @@ public abstract class Commands {
             case "read" -> {
                 if (channelConfig == null) {
                     ExceptionHandler.onCommandNotUsedInChannelDirectory();
+                    return;
+                }
+
+                int messageCount = 100;
+                if (args.size() > 0) {
+                    try {
+                        messageCount = Integer.parseInt(args.get(0));
+                    } catch (NumberFormatException e) {
+                        ExceptionHandler.onIllegalArgument("messageCount must be an integer");
+                    }
+                }
+
+                try {
+                    client.readMessages(channelConfig.id(), messageCount).forEach(message -> printMessage(console, message));
+                } catch (IOException e) {
+                    ExceptionHandler.onNetworkException();
                 }
             }
 

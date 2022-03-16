@@ -41,7 +41,8 @@ public class Main {
 
         PacketEncoder packetEncoder = new PacketEncoder();
         Connection connection = new Connection(clientConfig.serverHost(), clientConfig.serverPort(), packetEncoder);
-        Client client = new Client(connection, clientConfig);
+        Client client = new Client(connection);
+        Console console = new Console();
 
         String command = args[0];
         List<String> commandArguments = Arrays.asList(args).subList(1, args.length);
@@ -50,7 +51,8 @@ public class Main {
                 commandArguments,
                 clientConfig,
                 channelConfig,
-                client
+                client,
+                console
         );
     }
 }

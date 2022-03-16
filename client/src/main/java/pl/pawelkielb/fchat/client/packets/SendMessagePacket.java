@@ -1,12 +1,11 @@
 package pl.pawelkielb.fchat.client.packets;
 
-import pl.pawelkielb.fchat.client.Name;
+import pl.pawelkielb.fchat.client.Message;
 
 import java.util.UUID;
 
 public record SendMessagePacket(
-        Name author,
         UUID channel,
-        String message
+        Message message
 ) implements Packet {
 }
