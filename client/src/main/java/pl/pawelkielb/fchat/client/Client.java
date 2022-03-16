@@ -2,18 +2,14 @@ package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
-import pl.pawelkielb.fchat.client.config.Config;
 import pl.pawelkielb.fchat.client.data.Message;
 import pl.pawelkielb.fchat.client.data.Name;
-import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 import pl.pawelkielb.fchat.client.packets.Packet;
 import pl.pawelkielb.fchat.client.packets.RequestMessagesPacket;
 import pl.pawelkielb.fchat.client.packets.SendMessagePacket;
 import pl.pawelkielb.fchat.client.packets.UpdateChannelPacket;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -23,53 +19,41 @@ import static pl.pawelkielb.fchat.client.exceptions.Exceptions.u;
 
 public class Client {
     private final Connection connection;
+    private final Database database;
 
-    public Client(Connection connection) {
+    public Client(Connection connection, Database database) {
         this.connection = connection;
+        this.database = database;
     }
 
-    public static String sanitizeAsPath(String string) {
-        return string.replaceAll("[^0-9a-zA-z ]", "");
-    }
-
-    public void init(Path directory) {
+    public void init() {
         ClientConfig defaultClientConfig = ClientConfig.defaults();
-        Config.saveClientConfig(directory, defaultClientConfig);
+        database.saveClientConfig(defaultClientConfig);
     }
 
-    public void sync(Path rootDirectory) throws IOException {
+    public void sync() throws IOException {
         connection.connect();
 
         Packet packet;
         do {
             packet = connection.read();
             if (packet instanceof UpdateChannelPacket updateChannelPacket) {
-                createChannelDirectory(rootDirectory, updateChannelPacket.channelId(), updateChannelPacket.channelName());
+                ChannelConfig channelConfig = new ChannelConfig(updateChannelPacket.channelId());
+                database.saveChannelConfig(updateChannelPacket.channelName(), channelConfig);
             }
         } while (packet != null);
     }
 
-    private static void createChannelDirectory(Path parentDir, UUID id, Name name) {
-        Path path = parentDir.resolve(sanitizeAsPath(name.value()));
-        try {
-            Files.createDirectory(path);
-        } catch (IOException e) {
-            throw new FileWriteException(path);
-        }
-
-        ChannelConfig channelConfig = new ChannelConfig(id, name);
-        Config.saveChannelConfig(parentDir, channelConfig);
+    public void createPrivateChannel(Name recipient) throws IOException {
+        createGroupChannel(recipient, List.of(recipient));
     }
 
-    public void createPrivateChannel(Path directory, Name recipient) throws IOException {
-        createGroupChannel(directory, recipient, List.of(recipient));
-    }
-
-    public void createGroupChannel(Path directory, Name name, List<Name> members) throws IOException {
+    public void createGroupChannel(Name name, List<Name> members) throws IOException {
         connection.connect();
 
         UUID channelId = UUID.randomUUID();
-        createChannelDirectory(directory, channelId, name);
+        ChannelConfig channelConfig = new ChannelConfig(channelId);
+        database.saveChannelConfig(name, channelConfig);
 
         for (var member : members) {
             UpdateChannelPacket updateChannelPacket = UpdateChannelPacket.withRandomId(

@@ -15,12 +15,6 @@ public abstract class ExceptionHandler {
         }
     }
 
-    public static void onClientPropertiesNotFound() {
-        checkDevMode();
-        printError("Cannot find fchat.properties. Are you in fchat's directory?");
-        System.exit(1);
-    }
-
     public static void onCommandNotUsedInChannelDirectory() {
         checkDevMode();
         printError("This command can be only used in channel directory");
@@ -67,5 +61,11 @@ public abstract class ExceptionHandler {
         checkDevMode();
         printError(message);
         System.exit(9);
+    }
+
+    public static void onCannotFindClientConfig() {
+        checkDevMode();
+        printError("Cannot find fchat.properties file. Are you in fchat's directory?");
+        System.exit(10);
     }
 }
