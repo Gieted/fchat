@@ -1,6 +1,6 @@
 package pl.pawelkielb.fchat.client.config;
 
-import pl.pawelkielb.fchat.client.Name;
+import pl.pawelkielb.fchat.client.data.Name;
 
 public record ClientConfig(Name username, String serverHost, int serverPort) {
 

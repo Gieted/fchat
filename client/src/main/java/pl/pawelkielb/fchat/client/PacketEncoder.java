@@ -1,5 +1,7 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.client.data.Message;
+import pl.pawelkielb.fchat.client.data.Name;
 import pl.pawelkielb.fchat.client.exceptions.PacketDecodeException;
 import pl.pawelkielb.fchat.client.packets.*;
 

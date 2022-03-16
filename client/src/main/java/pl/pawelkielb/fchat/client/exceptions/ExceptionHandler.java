@@ -1,4 +1,6 @@
-package pl.pawelkielb.fchat.client;
+package pl.pawelkielb.fchat.client.exceptions;
+
+import pl.pawelkielb.fchat.client.Main;
 
 import java.nio.file.Path;
 

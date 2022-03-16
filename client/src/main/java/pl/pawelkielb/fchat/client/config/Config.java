@@ -1,6 +1,6 @@
 package pl.pawelkielb.fchat.client.config;
 
-import pl.pawelkielb.fchat.client.Name;
+import pl.pawelkielb.fchat.client.data.Name;
 import pl.pawelkielb.fchat.client.exceptions.FileReadException;
 import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 

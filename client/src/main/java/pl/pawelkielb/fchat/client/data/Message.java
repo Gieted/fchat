@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat.client;
+package pl.pawelkielb.fchat.client.data;
 
 public record Message(Name author, String content) {
 

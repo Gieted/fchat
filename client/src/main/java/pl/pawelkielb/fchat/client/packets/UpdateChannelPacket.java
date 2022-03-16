@@ -1,6 +1,6 @@
 package pl.pawelkielb.fchat.client.packets;
 
-import pl.pawelkielb.fchat.client.Name;
+import pl.pawelkielb.fchat.client.data.Name;
 
 import java.util.UUID;
 

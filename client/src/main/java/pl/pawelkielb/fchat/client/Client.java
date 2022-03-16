@@ -3,6 +3,8 @@ package pl.pawelkielb.fchat.client;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.config.Config;
+import pl.pawelkielb.fchat.client.data.Message;
+import pl.pawelkielb.fchat.client.data.Name;
 import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 import pl.pawelkielb.fchat.client.packets.Packet;
 import pl.pawelkielb.fchat.client.packets.RequestMessagesPacket;
@@ -17,7 +19,7 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static pl.pawelkielb.fchat.client.Exceptions.u;
+import static pl.pawelkielb.fchat.client.exceptions.Exceptions.u;
 
 public class Client {
     private final Connection connection;

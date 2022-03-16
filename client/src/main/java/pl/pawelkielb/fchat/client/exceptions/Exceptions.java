@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat.client;
+package pl.pawelkielb.fchat.client.exceptions;
 
 import java.util.function.IntFunction;
 
