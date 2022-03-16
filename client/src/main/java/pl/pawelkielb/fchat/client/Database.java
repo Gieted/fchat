@@ -26,32 +26,32 @@ public class Database {
         return string.replaceAll("[^0-9a-zA-z ]", "");
     }
 
-    public static Properties readProperties(Path path) throws IOException {
+    public static Properties readProperties(Path path) {
         Properties properties = new Properties();
         try (var clientPropertiesReader = Files.newBufferedReader(path)) {
             properties.load(clientPropertiesReader);
             return properties;
+        } catch (IOException e) {
+            throw new FileReadException(path);
         }
     }
 
-    public static void writeProperties(Path path, Properties properties) throws IOException {
+    public static void writeProperties(Path path, Properties properties) {
         try (OutputStream outputStream = Files.newOutputStream(path)) {
             properties.store(outputStream, null);
+        } catch (IOException e) {
+            throw new FileWriteException(path);
         }
     }
 
     public ClientConfig loadClientConfig() {
         Path path = rootDirectory.resolve(clientConfigFileName);
-        try {
-            Properties properties = readProperties(path);
-            Name username = Name.of(properties.getProperty("username"));
-            String serverHost = properties.getProperty("server_host");
-            int serverPort = Integer.parseInt(properties.getProperty("server_port"));
+        Properties properties = readProperties(path);
+        Name username = Name.of(properties.getProperty("username"));
+        String serverHost = properties.getProperty("server_host");
+        int serverPort = Integer.parseInt(properties.getProperty("server_port"));
 
-            return new ClientConfig(username, serverHost, serverPort);
-        } catch (IOException e) {
-            throw new FileReadException(path);
-        }
+        return new ClientConfig(username, serverHost, serverPort);
     }
 
     public void saveClientConfig(ClientConfig clientConfig) {
@@ -60,11 +60,8 @@ public class Database {
         properties.setProperty("server_host", clientConfig.serverHost());
         properties.setProperty("server_port", String.valueOf(clientConfig.serverPort()));
         Path path = rootDirectory.resolve(clientConfigFileName);
-        try {
-            writeProperties(path, properties);
-        } catch (IOException e) {
-            throw new FileWriteException(path);
-        }
+
+        writeProperties(path, properties);
     }
 
     public void saveChannelConfig(Name name, ChannelConfig channelConfig) {
@@ -78,10 +75,7 @@ public class Database {
         Properties properties = new Properties();
         properties.setProperty("id", channelConfig.id().toString());
         Path configPath = directoryPath.resolve(channelConfigFileName);
-        try {
-            writeProperties(configPath, properties);
-        } catch (IOException e) {
-            throw new FileWriteException(configPath);
-        }
+
+        writeProperties(configPath, properties);
     }
 }

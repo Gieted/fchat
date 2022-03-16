@@ -5,9 +5,12 @@ import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;
 import pl.pawelkielb.fchat.client.exceptions.FileReadException;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
+import java.util.UUID;
 
 public class Main {
     public static final boolean DEV_MODE = System.getProperty("DEV_MODE") != null;
@@ -37,7 +40,13 @@ public class Main {
             clientConfig = database.loadClientConfig();
         } catch (FileReadException e) {
             try {
-                channelConfig = ChannelConfig.load();
+                Properties properties;
+                Path path = Paths.get("channel.properties");
+                properties = Database.readProperties(path);
+
+                UUID channelId = UUID.fromString(properties.getProperty("id"));
+
+                channelConfig = new ChannelConfig(channelId);
                 database = new Database(Paths.get(".."));
                 clientConfig = database.loadClientConfig();
             } catch (FileReadException e1) {
