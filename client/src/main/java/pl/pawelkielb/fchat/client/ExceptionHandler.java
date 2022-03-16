@@ -2,66 +2,60 @@ package pl.pawelkielb.fchat.client;
 
 import java.nio.file.Path;
 
-public class ExceptionHandler {
-    private final boolean isDevModeEnabled;
-
-    public ExceptionHandler(boolean isDevModeEnabled) {
-        this.isDevModeEnabled = isDevModeEnabled;
-    }
-
+public abstract class ExceptionHandler {
     private static void printError(String message) {
         System.err.println(message);
     }
 
-    private void checkDevMode() {
-        if (isDevModeEnabled) {
+    private static void checkDevMode() {
+        if (Main.DEV_MODE) {
             throw new RuntimeException();
         }
     }
 
-    public void onClientPropertiesNotFound() {
+    public static void onClientPropertiesNotFound() {
         checkDevMode();
         printError("Cannot find fchat.properties. Are you in fchat's directory?");
         System.exit(1);
     }
 
-    public void onCommandNotUsedInChannelDirectory() {
+    public static void onCommandNotUsedInChannelDirectory() {
         checkDevMode();
         printError("This command can be only used in channel directory");
         System.exit(2);
     }
 
-    public void onMessageNotProvided() {
+    public static void onMessageNotProvided() {
         checkDevMode();
         printError("Please provide a message");
         System.exit(3);
     }
 
-    public void onCannotSaveClientProperties() {
+    public static void onInitCalledInFchatDirectory() {
         checkDevMode();
-        printError("Cannot save client properties. Is the file opened by another program?");
+        printError("This is already an fchat directory");
         System.exit(4);
     }
 
-    public void onInitCalledInFchatDirectory() {
+    public static void onCommandUsedInChannelDirectory() {
         checkDevMode();
-        printError("This is already an fchat directory");
+        printError("This command can only be used in fchat's root directory");
         System.exit(5);
     }
 
-    public void onCommandUsedInChannelDirectory() {
+    public static void onCannotWriteFile(Path path) {
         checkDevMode();
-        printError("This command can only be used in fchat's root directory");
+        printError(String.format("Cannot write a file (%s)", path.toAbsolutePath()));
         System.exit(6);
     }
 
-    public void onCannotWriteFile(Path path) {
+    public static void onCannotReadFile(Path path) {
         checkDevMode();
-        printError(String.format("Cannot write a file (%s)", path.toAbsolutePath()));
+        printError(String.format("Cannot read a file (%s)", path.toAbsolutePath()));
         System.exit(7);
     }
 
-    public void onNetworkException() {
+    public static void onNetworkException() {
         checkDevMode();
         printError("There was an error while sending data");
         System.exit(8);
