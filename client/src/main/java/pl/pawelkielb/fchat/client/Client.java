@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.data.Message;
@@ -20,10 +21,12 @@ import static pl.pawelkielb.fchat.client.exceptions.Exceptions.u;
 public class Client {
     private final Connection connection;
     private final Database database;
+    private final ClientConfig clientConfig;
 
-    public Client(Connection connection, Database database) {
+    public Client(Connection connection, Database database, ClientConfig clientConfig) {
         this.connection = connection;
         this.database = database;
+        this.clientConfig = clientConfig;
     }
 
     public void init() {
@@ -32,7 +35,7 @@ public class Client {
     }
 
     public void sync() throws IOException {
-        connection.connect();
+        connection.connect(clientConfig.serverHost(), clientConfig.serverPort());
 
         Packet packet;
         do {

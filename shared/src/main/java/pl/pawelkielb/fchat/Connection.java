@@ -1,6 +1,5 @@
-package pl.pawelkielb.fchat.client;
+package pl.pawelkielb.fchat;
 
-import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.packets.Packet;
 
 import java.io.IOException;
@@ -11,17 +10,13 @@ import java.nio.ByteBuffer;
 
 public class Connection {
     private Socket socket;
-    private final String address;
-    private final int port;
     private final PacketEncoder packetEncoder;
 
-    public Connection(String address, int port, PacketEncoder packetEncoder) {
-        this.address = address;
-        this.port = port;
+    public Connection(PacketEncoder packetEncoder) {
         this.packetEncoder = packetEncoder;
     }
 
-    public void connect() throws IOException {
+    public void connect(String address, int port) throws IOException {
         this.socket = new Socket(address, port);
     }
 

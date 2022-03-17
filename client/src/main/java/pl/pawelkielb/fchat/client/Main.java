@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
@@ -57,8 +58,8 @@ public class Main {
         }
 
         PacketEncoder packetEncoder = new PacketEncoder();
-        Connection connection = new Connection(clientConfig.serverHost(), clientConfig.serverPort(), packetEncoder);
-        Client client = new Client(connection, database);
+        Connection connection = new Connection(packetEncoder);
+        Client client = new Client(connection, database, clientConfig);
         Console console = new Console();
 
         String command = args[0];
