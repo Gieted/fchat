@@ -35,12 +35,6 @@ public abstract class Commands {
             System.exit(0);
         }
 
-        try {
-            client.sync();
-        } catch (IOException e) {
-            ExceptionHandler.onNetworkException();
-        }
-
         switch (command) {
             case "create" -> {
                 if (channelConfig != null) {
@@ -111,7 +105,11 @@ public abstract class Commands {
             }
 
             case "sync" -> {
-
+                try {
+                    client.sync();
+                } catch (IOException e) {
+                    ExceptionHandler.onNetworkException();
+                }
             }
         }
     }

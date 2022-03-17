@@ -49,7 +49,7 @@ public class Client {
     }
 
     public void createGroupChannel(Name name, List<Name> members) throws IOException {
-        connection.connect();
+        sync();
 
         UUID channelId = UUID.randomUUID();
         ChannelConfig channelConfig = new ChannelConfig(channelId);
@@ -66,7 +66,7 @@ public class Client {
     }
 
     public void sendMessage(UUID channel, Message message) throws IOException {
-        connection.connect();
+        sync();
 
         SendMessagePacket sendMessagePacket = new SendMessagePacket(
                 channel,
@@ -77,7 +77,7 @@ public class Client {
     }
 
     public Stream<Message> readMessages(UUID channel, int count) throws IOException {
-        connection.connect();
+        sync();
 
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
         connection.send(requestMessagesPacket);
