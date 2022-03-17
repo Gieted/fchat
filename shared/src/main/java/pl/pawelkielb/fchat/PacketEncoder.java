@@ -1,9 +1,8 @@
-package pl.pawelkielb.fchat.client;
+package pl.pawelkielb.fchat;
 
-import pl.pawelkielb.fchat.client.data.Message;
-import pl.pawelkielb.fchat.client.data.Name;
-import pl.pawelkielb.fchat.client.exceptions.PacketDecodeException;
-import pl.pawelkielb.fchat.client.packets.*;
+import pl.pawelkielb.fchat.data.Message;
+import pl.pawelkielb.fchat.data.Name;
+import pl.pawelkielb.fchat.packets.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

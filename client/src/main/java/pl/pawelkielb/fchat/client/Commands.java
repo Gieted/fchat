@@ -2,10 +2,10 @@ package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
-import pl.pawelkielb.fchat.client.data.Message;
-import pl.pawelkielb.fchat.client.data.Name;
 import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;
 import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
+import pl.pawelkielb.fchat.data.Message;
+import pl.pawelkielb.fchat.data.Name;
 
 import java.io.IOException;
 import java.util.List;

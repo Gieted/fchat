@@ -2,5 +2,6 @@ rootProject.name = "fchat"
 
 include(
     ":client",
-    ":server"
+    ":server",
+    ":shared"
 )

@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat.client.exceptions;
+package pl.pawelkielb.fchat;
 
 public class PacketDecodeException extends RuntimeException {
     public PacketDecodeException(String message) {

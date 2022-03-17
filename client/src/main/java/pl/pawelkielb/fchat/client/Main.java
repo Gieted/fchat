@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;

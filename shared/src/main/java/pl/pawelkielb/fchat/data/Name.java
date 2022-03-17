@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat.client.data;
+package pl.pawelkielb.fchat.data;
 
 // cannot be a record, because of private constructor
 public final class Name {

@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat.client.packets;
+package pl.pawelkielb.fchat.packets;
 
 import java.util.UUID;
 

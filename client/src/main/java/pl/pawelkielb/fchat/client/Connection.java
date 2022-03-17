@@ -1,6 +1,7 @@
 package pl.pawelkielb.fchat.client;
 
-import pl.pawelkielb.fchat.client.packets.Packet;
+import pl.pawelkielb.fchat.PacketEncoder;
+import pl.pawelkielb.fchat.packets.Packet;
 
 import java.io.IOException;
 import java.io.InputStream;

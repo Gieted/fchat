@@ -6,5 +6,4 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":shared"))
 }
