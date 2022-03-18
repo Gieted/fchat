@@ -25,6 +25,8 @@ public class PacketEncoder {
             packetBytes = toBytes(requestLivePacket);
         } else if (packet instanceof AcknowledgePacket acknowledgePacket) {
             packetBytes = toBytes(acknowledgePacket);
+        } else if (packet instanceof LoginPacket loginPacket) {
+            packetBytes = toBytes(loginPacket);
         } else {
             throw new IllegalArgumentException("This packet type is not supported");
         }
@@ -94,6 +96,15 @@ public class PacketEncoder {
         return packetString.getBytes();
     }
 
+    public byte[] toBytes(LoginPacket packet) {
+        Properties properties = new Properties();
+        properties.setProperty("type", "Login");
+        properties.setProperty("username", packet.username().value());
+        String packetString = propertiesToString(properties);
+
+        return packetString.getBytes();
+    }
+
     public Packet decode(byte[] packetBytes) {
         String packetString = new String(packetBytes);
         Properties properties = new Properties();
@@ -142,6 +153,12 @@ public class PacketEncoder {
                 UUID packetId = UUID.fromString(properties.getProperty("packet_id"));
 
                 yield new AcknowledgePacket(packetId);
+            }
+
+            case "Login" -> {
+                Name username = Name.of(properties.getProperty("username"));
+
+                yield new LoginPacket(username);
             }
 
             default -> throw new PacketDecodeException("Unknown packet type");

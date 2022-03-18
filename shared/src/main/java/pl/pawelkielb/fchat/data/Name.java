@@ -12,6 +12,12 @@ public final class Name {
         if (name.contains(",")) {
             throw new IllegalArgumentException("Name cannot contain commas");
         }
+        if (name.contains("=")) {
+            throw new IllegalArgumentException("Name cannot contain equals symbol");
+        }
+        if (name.contains("\n")) {
+            throw new IllegalArgumentException("Name cannot contain new line characters");
+        }
         return new Name(name);
     }
 

@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 
 public class Main {
     public static final boolean DEV_MODE = System.getProperty("DEV_MODE") != null;
@@ -58,8 +59,9 @@ public class Main {
         }
 
         PacketEncoder packetEncoder = new PacketEncoder();
-        Connection connection = new Connection(packetEncoder);
-        Client client = new Client(connection, database, clientConfig);
+        Executor executorService = Runnable::run;
+        Connection connection = new Connection(packetEncoder, clientConfig.serverHost(), clientConfig.serverPort(), executorService, executorService);
+        Client client = new Client(connection, database);
         Console console = new Console();
 
         String command = args[0];

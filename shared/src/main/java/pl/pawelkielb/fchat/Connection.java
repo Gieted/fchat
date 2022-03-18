@@ -2,28 +2,43 @@ package pl.pawelkielb.fchat;
 
 import pl.pawelkielb.fchat.packets.Packet;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+
+import static pl.pawelkielb.fchat.Exceptions.r;
 
 public class Connection {
-    private Socket socket;
     private final PacketEncoder packetEncoder;
+    private Socket socket;
+    private final Executor workerThreads;
+    private final Executor ioThreads;
+    private String address;
+    private int port;
 
-    public Connection(PacketEncoder packetEncoder) {
+    public Connection(PacketEncoder packetEncoder,
+                      String address,
+                      int port,
+                      Executor workerThreads,
+                      Executor ioThreads) {
+
+        this(packetEncoder, null, workerThreads, ioThreads);
+        this.address = address;
+        this.port = port;
+    }
+
+    public Connection(PacketEncoder packetEncoder,
+                      Socket socket,
+                      Executor workerThreads,
+                      Executor ioThreads) {
+
         this.packetEncoder = packetEncoder;
-    }
-
-    public void connect(String address, int port) throws IOException {
-        this.socket = new Socket(address, port);
-    }
-
-    private void checkConnection() {
-        if (socket == null) {
-            throw new IllegalStateException("Not connected yet");
-        }
+        this.socket = socket;
+        this.workerThreads = workerThreads;
+        this.ioThreads = ioThreads;
     }
 
     private static int intFromBytes(byte[] bytes) {
@@ -34,33 +49,65 @@ public class Connection {
         return ByteBuffer.allocate(4).putInt(integer).array();
     }
 
-    public void send(Packet packet) throws IOException {
-        checkConnection();
+    private CompletableFuture<?> connect() {
+        CompletableFuture<?> future = new CompletableFuture<>();
 
-        OutputStream outputStream = socket.getOutputStream();
-
-        if (packet == null) {
-            outputStream.write(0);
+        if (socket == null) {
+            ioThreads.execute(r(() -> {
+                socket = new Socket(address, port);
+                future.complete(null);
+            }));
+        } else {
+            future.complete(null);
         }
 
-        byte[] packetBytes = packetEncoder.toBytes(packet);
-        outputStream.write(intToBytes(packetBytes.length));
-        socket.getOutputStream().write(packetBytes);
+        return future;
     }
 
-    public Packet read() throws IOException {
-        checkConnection();
+    public CompletableFuture<?> send(Packet packet) {
+        CompletableFuture<?> future = new CompletableFuture<>();
 
-        InputStream input = socket.getInputStream();
-        int packetSize = intFromBytes(input.readNBytes(4));
+        connect().thenRun(() -> ioThreads.execute(r(() -> {
+            OutputStream outputStream = socket.getOutputStream();
 
-        // null packet
-        if (packetSize == 0) {
-            return null;
-        }
+            if (packet == null) {
+                outputStream.write(0);
+                future.complete(null);
+                return;
+            }
 
-        byte[] packetBytes = input.readNBytes(packetSize);
+            workerThreads.execute(r(() -> {
+                byte[] packetBytes = packetEncoder.toBytes(packet);
+                ioThreads.execute(r(() -> {
+                    outputStream.write(intToBytes(packetBytes.length));
+                    outputStream.write(packetBytes);
+                    future.complete(null);
+                }));
+            }));
+        })));
 
-        return packetEncoder.decode(packetBytes);
+        return future;
+    }
+
+    public CompletableFuture<Packet> read() {
+        CompletableFuture<Packet> future = new CompletableFuture<>();
+        connect().thenRun(() -> ioThreads.execute(r(() -> {
+            InputStream input = socket.getInputStream();
+            int packetSize = intFromBytes(input.readNBytes(4));
+
+            // null packet
+            if (packetSize == 0) {
+                future.complete(null);
+                return;
+            }
+
+            workerThreads.execute(r(() -> {
+                byte[] packetBytes = input.readNBytes(packetSize);
+
+                future.complete(packetEncoder.decode(packetBytes));
+            }));
+        })));
+
+        return future;
     }
 }

@@ -13,20 +13,19 @@ import pl.pawelkielb.fchat.packets.UpdateChannelPacket;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static pl.pawelkielb.fchat.client.exceptions.Exceptions.u;
+import static pl.pawelkielb.fchat.Exceptions.i;
 
 public class Client {
     private final Connection connection;
     private final Database database;
-    private final ClientConfig clientConfig;
 
-    public Client(Connection connection, Database database, ClientConfig clientConfig) {
+    public Client(Connection connection, Database database) {
         this.connection = connection;
         this.database = database;
-        this.clientConfig = clientConfig;
     }
 
     public void init() {
@@ -35,11 +34,13 @@ public class Client {
     }
 
     public void sync() throws IOException {
-        connection.connect(clientConfig.serverHost(), clientConfig.serverPort());
-
         Packet packet;
         do {
-            packet = connection.read();
+            try {
+                packet = connection.read().get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new AssertionError();
+            }
             if (packet instanceof UpdateChannelPacket updateChannelPacket) {
                 ChannelConfig channelConfig = new ChannelConfig(updateChannelPacket.channelId());
                 database.saveChannelConfig(updateChannelPacket.channelName(), channelConfig);
@@ -85,9 +86,9 @@ public class Client {
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
         connection.send(requestMessagesPacket);
 
-        return IntStream.range(0, count).mapToObj(u((i) -> {
+        return IntStream.range(0, count).mapToObj(i((i) -> {
             while (true) {
-                Packet packet = connection.read();
+                Packet packet = connection.read().get();
                 if (packet instanceof SendMessagePacket sendMessagePacket) {
                     return sendMessagePacket.message();
                 }
