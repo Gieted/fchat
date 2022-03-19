@@ -46,6 +46,6 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        startServer(8080);
+        startServer(1337);
     }
 }

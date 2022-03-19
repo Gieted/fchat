@@ -1,6 +1,10 @@
 plugins {
     java
-    id("edu.sc.seis.launch4j") version "2.5.0"
+    application
+}
+
+application {
+    mainClass.set("pl.pawelkielb.fchat.client.Main")
 }
 
 repositories {
@@ -10,36 +14,24 @@ dependencies {
     implementation(project(":shared"))
 }
 
+
 tasks.create("release") {
+    dependsOn("installDist")
     group = "build"
-    dependsOn("createExe")
 
     copy {
         from(zipTree("../jdks/openjdk-17.0.2_windows-x64_bin.zip"))
         into("build/tmp")
     }
 
-    file("build/tmp/jdk-17.0.2").renameTo(file("build/launch4j/jre"))
-}
+    doLast {
+        file("build/tmp/jdk-17.0.2").renameTo(file("build/install/client/jre"))
 
-
-tasks.register<Jar>("uberJar") {
-    archiveClassifier.set("uber")
-
-    from(sourceSets.main.get().output)
-
-    dependsOn(configurations.runtimeClasspath)
-    from({
-        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
-    })
-}
-
-launch4j {
-    mainClassName = "pl.pawelkielb.fchat.client.Main"
-    bundledJrePath = "./jre"
-    bundledJre64Bit = true
-    outfile = "fchat.exe"
-    headerType = "console"
-    chdir = ""
-    jarTask = tasks["uberJar"]
+        val bin = "build/install/client/bin"
+        file("$bin/client").renameTo(file("$bin/fchat"))
+        file("$bin/client.bat").renameTo(file("$bin/fchat.bat"))
+        val scriptBat = file("$bin/fchat.bat").readText().split("\n").toMutableList()
+        scriptBat.add(30, """set JAVA_HOME=%~dp0..\jre""")
+        file("$bin/fchat.bat").writeText(scriptBat.joinToString("\n"))
+    }
 }
