@@ -2,7 +2,7 @@ package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.data.Name;
-import pl.pawelkielb.fchat.packets.UpdateChannelPacket;
+import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,18 +30,22 @@ public class Database {
         this.packetEncoder = packetEncoder;
     }
 
-    public Observable<UpdateChannelPacket> listUpdatePackets(Name username) {
-        Observable<UpdateChannelPacket> updatePackets = new Observable<>();
-        Path path = updatesDirectory.resolve(String.valueOf(username.hashCode()));
+    private static String nameToFilename(Name name) {
+        return String.valueOf(name.hashCode());
+    }
+
+    public Observable<ChannelUpdatedPacket> listUpdatePackets(Name username) {
+        Observable<ChannelUpdatedPacket> updatePackets = new Observable<>();
+        Path directory = updatesDirectory.resolve(String.valueOf(username.hashCode()));
 
         ioThreads.execute(r(() -> {
-            List<CompletableFuture<Void>> futures = Files.list(path).map(file -> {
+            List<CompletableFuture<Void>> futures = Files.list(directory).map(file -> {
                 CompletableFuture<Void> future = new CompletableFuture<>();
                 ioThreads.execute(r(() -> {
                     byte[] bytes = Files.readAllBytes(file);
 
                     workerThreads.execute(() -> {
-                        UpdateChannelPacket packet = (UpdateChannelPacket) packetEncoder.decode(bytes);
+                        ChannelUpdatedPacket packet = (ChannelUpdatedPacket) packetEncoder.decode(bytes);
                         updatePackets.onNext(packet);
                         future.complete(null);
                     });
@@ -56,11 +60,26 @@ public class Database {
         return updatePackets;
     }
 
-    public CompletableFuture<Void> deleteUpdatePacket(Name username, UUID packetId) {
+    public CompletableFuture<Void> saveUpdatePacket(Name username, ChannelUpdatedPacket updatedPacket) {
         CompletableFuture<Void> future = new CompletableFuture<>();
-        Path path = updatesDirectory.resolve(String.valueOf(username.hashCode()));
+        Path directory = updatesDirectory.resolve(nameToFilename(username));
         ioThreads.execute(r(() -> {
-            Files.delete(path.resolve(packetId.toString()));
+            Files.createDirectory(directory);
+            Path file = directory.resolve(updatedPacket.channel().toString());
+            byte[] bytes = packetEncoder.toBytes(updatedPacket);
+            Files.write(file, bytes);
+            future.complete(null);
+        }));
+
+        return future;
+    }
+
+    public CompletableFuture<Void> deleteUpdatePacket(Name username, UUID channelId) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        Path directory = updatesDirectory.resolve(nameToFilename(username));
+        ioThreads.execute(r(() -> {
+            Path file = directory.resolve(channelId.toString());
+            Files.delete(file);
             future.complete(null);
         }));
 
