@@ -22,7 +22,7 @@ public class Main {
                         nextPacket(connection, clientHandler)));
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void startServer(int port) throws IOException {
         int cpusCount = Runtime.getRuntime().availableProcessors();
         Executor workerThreads = Executors.newFixedThreadPool(Math.min(cpusCount, 32));
         Executor ioThreads = Executors.newFixedThreadPool(1000);
@@ -30,7 +30,7 @@ public class Main {
         PacketEncoder packetEncoder = new PacketEncoder();
         Database database = new Database(workerThreads, ioThreads, Paths.get("."), packetEncoder);
 
-        ServerSocket server = new ServerSocket(8080);
+        ServerSocket server = new ServerSocket(port);
 
         ioThreads.execute(r(() -> {
             // noinspection InfiniteLoopStatement
@@ -43,5 +43,9 @@ public class Main {
                 });
             }
         }));
+    }
+
+    public static void main(String[] args) throws IOException {
+        startServer(8080);
     }
 }
