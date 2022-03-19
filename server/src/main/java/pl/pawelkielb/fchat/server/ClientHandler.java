@@ -16,14 +16,13 @@ public class ClientHandler {
         this.connection = connection;
     }
 
-    public CompletableFuture<?> handlePacket(Packet packet) {
-        CompletableFuture<?> future = new CompletableFuture<>();
+    public CompletableFuture<Void> handlePacket(Packet packet) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
 
         if (!loggedIn) {
             if (packet instanceof LoginPacket loginPacket) {
                 database.listUpdatePackets(loginPacket.username())
-                        .subscribe(connection::send)
-                        .thenRun(() -> future.complete(null));
+                        .subscribe(connection::send, () -> future.complete(null));
 
                 loggedIn = true;
             }

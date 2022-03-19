@@ -2,17 +2,15 @@ package pl.pawelkielb.fchat.server;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class Observable<T> {
     private final List<Consumer<T>> observers = new ArrayList<>();
-    private final CompletableFuture<?> completion = new CompletableFuture<>();
+    private final List<Runnable> completionListeners = new ArrayList<>();
 
-    public CompletableFuture<?> subscribe(Consumer<T> observer) {
+    public void subscribe(Consumer<T> observer, Runnable onComplete) {
         observers.add(observer);
-
-        return completion;
+        completionListeners.add(onComplete);
     }
 
     public void onNext(T next) {
@@ -20,6 +18,6 @@ public class Observable<T> {
     }
 
     public void complete() {
-        completion.complete(null);
+        completionListeners.forEach(Runnable::run);
     }
 }

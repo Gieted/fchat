@@ -35,8 +35,8 @@ public class Database {
         Path path = updatesDirectory.resolve(String.valueOf(username.hashCode()));
 
         ioThreads.execute(r(() -> {
-            List<? extends CompletableFuture<?>> futures = Files.list(path).map(file -> {
-                CompletableFuture<?> future = new CompletableFuture<>();
+            List<CompletableFuture<Void>> futures = Files.list(path).map(file -> {
+                CompletableFuture<Void> future = new CompletableFuture<>();
                 ioThreads.execute(r(() -> {
                     byte[] bytes = Files.readAllBytes(file);
 
@@ -56,8 +56,8 @@ public class Database {
         return updatePackets;
     }
 
-    public CompletableFuture<?> deleteUpdatePacket(Name username, UUID packetId) {
-        CompletableFuture<?> future = new CompletableFuture<>();
+    public CompletableFuture<Void> deleteUpdatePacket(Name username, UUID packetId) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
         Path path = updatesDirectory.resolve(String.valueOf(username.hashCode()));
         ioThreads.execute(r(() -> {
             Files.delete(path.resolve(packetId.toString()));

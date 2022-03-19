@@ -56,8 +56,8 @@ public class Connection {
         }
     }
 
-    public CompletableFuture<?> send(Packet packet) {
-        CompletableFuture<?> future = new CompletableFuture<>();
+    public CompletableFuture<Void> send(Packet packet) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
 
         ioThreads.execute(r(() -> {
             connect();
