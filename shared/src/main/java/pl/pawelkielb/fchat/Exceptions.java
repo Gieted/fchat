@@ -1,7 +1,9 @@
 package pl.pawelkielb.fchat;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 public abstract class Exceptions {
     @SuppressWarnings("unchecked")
@@ -22,6 +24,16 @@ public abstract class Exceptions {
     @FunctionalInterface
     public interface Consumer_WithExceptions<T, E extends Exception> {
         void accept(T t) throws E;
+    }
+
+    @FunctionalInterface
+    public interface Function_WithExceptions<T, R, E extends Exception> {
+        R apply(T t) throws E;
+    }
+
+    @FunctionalInterface
+    public interface Supplier_WithExceptions<R, E extends Exception> {
+        R get() throws E;
     }
 
     public static <R, E extends Exception> IntFunction<R> i(IntFunction_WithExceptions<R, E> fn) {
@@ -51,6 +63,28 @@ public abstract class Exceptions {
                 fn.accept(t);
             } catch (Exception e) {
                 throwAsUnchecked(e);
+            }
+        };
+    }
+
+    public static <T, R, E extends Exception> Function<T, R> f(Function_WithExceptions<T, R, E> fn) {
+        return (t) -> {
+            try {
+                return fn.apply(t);
+            } catch (Exception e) {
+                throwAsUnchecked(e);
+                return null;
+            }
+        };
+    }
+
+    public static <R, E extends Exception> Supplier<R> s(Supplier_WithExceptions<R, E> fn) {
+        return () -> {
+            try {
+                return fn.get();
+            } catch (Exception e) {
+                throwAsUnchecked(e);
+                return null;
             }
         };
     }

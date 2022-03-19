@@ -6,10 +6,10 @@ import pl.pawelkielb.fchat.packets.UpdateChannelPacket;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.stream.Stream;
 
 import static pl.pawelkielb.fchat.Exceptions.r;
 
@@ -30,27 +30,30 @@ public class Database {
         this.packetEncoder = packetEncoder;
     }
 
-    public CompletableFuture<Stream<CompletableFuture<UpdateChannelPacket>>> listUpdatePackets(Name username) {
+    public Observable<UpdateChannelPacket> listUpdatePackets(Name username) {
+        Observable<UpdateChannelPacket> updatePackets = new Observable<>();
         Path path = updatesDirectory.resolve(String.valueOf(username.hashCode()));
-        CompletableFuture<Stream<CompletableFuture<UpdateChannelPacket>>> streamFuture = new CompletableFuture<>();
 
         ioThreads.execute(r(() -> {
-            Stream<CompletableFuture<UpdateChannelPacket>> stream = Files.list(path).map(file -> {
-                CompletableFuture<UpdateChannelPacket> future = new CompletableFuture<>();
+            List<? extends CompletableFuture<?>> futures = Files.list(path).map(file -> {
+                CompletableFuture<?> future = new CompletableFuture<>();
                 ioThreads.execute(r(() -> {
                     byte[] bytes = Files.readAllBytes(file);
+
                     workerThreads.execute(() -> {
                         UpdateChannelPacket packet = (UpdateChannelPacket) packetEncoder.decode(bytes);
-                        future.complete(packet);
+                        updatePackets.onNext(packet);
+                        future.complete(null);
                     });
                 }));
 
                 return future;
-            });
-            streamFuture.complete(stream);
+            }).toList();
+
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenRun(updatePackets::complete);
         }));
 
-        return streamFuture;
+        return updatePackets;
     }
 
     public CompletableFuture<?> deleteUpdatePacket(Name username, UUID packetId) {

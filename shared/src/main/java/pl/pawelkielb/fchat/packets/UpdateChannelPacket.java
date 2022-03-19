@@ -2,16 +2,12 @@ package pl.pawelkielb.fchat.packets;
 
 import pl.pawelkielb.fchat.data.Name;
 
+import java.util.List;
 import java.util.UUID;
 
 public record UpdateChannelPacket(
-        UUID packetId,
-        UUID channelId,
-        Name channelName,
-        Name recipient
+        UUID channel,
+        Name name,
+        List<Name> members
 ) implements Packet {
-
-    public static UpdateChannelPacket withRandomId(UUID channelId, Name channelName, Name recipient) {
-        return new UpdateChannelPacket(UUID.randomUUID(), channelId, channelName, recipient);
-    }
 }

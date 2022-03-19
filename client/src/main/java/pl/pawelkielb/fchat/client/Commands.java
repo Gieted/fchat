@@ -24,7 +24,9 @@ public abstract class Commands {
                                Console console) {
 
         if (command.equals("init")) {
-            ExceptionHandler.onInitCalledInFchatDirectory();
+            if (clientConfig != null) {
+                ExceptionHandler.onInitCalledInFchatDirectory();
+            }
 
             try {
                 client.init();

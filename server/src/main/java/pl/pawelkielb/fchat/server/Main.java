@@ -15,14 +15,11 @@ import static pl.pawelkielb.fchat.Exceptions.r;
 
 public class Main {
     public static void nextPacket(Connection connection,
-                                  ClientHandler clientHandler,
-                                  Executor ioThreads,
-                                  Executor workerThreads) {
+                                  ClientHandler clientHandler) {
 
-        connection.read().thenAccept(packet -> {
-            clientHandler.handlePacket(packet);
-            nextPacket(connection, clientHandler, ioThreads, workerThreads);
-        });
+        connection.read().thenAccept(packet ->
+                clientHandler.handlePacket(packet).thenRun(() ->
+                        nextPacket(connection, clientHandler)));
     }
 
     public static void main(String[] args) throws IOException {
@@ -36,13 +33,13 @@ public class Main {
         ServerSocket server = new ServerSocket(8080);
 
         ioThreads.execute(r(() -> {
-            //noinspection InfiniteLoopStatement
+            // noinspection InfiniteLoopStatement
             while (true) {
                 Socket socket = server.accept();
                 workerThreads.execute(() -> {
                     Connection connection = new Connection(packetEncoder, socket, workerThreads, ioThreads);
                     ClientHandler clientHandler = new ClientHandler(database, connection);
-                    nextPacket(connection, clientHandler, ioThreads, workerThreads);
+                    nextPacket(connection, clientHandler);
                 });
             }
         }));

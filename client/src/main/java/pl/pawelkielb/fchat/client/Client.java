@@ -42,8 +42,8 @@ public class Client {
                 throw new AssertionError();
             }
             if (packet instanceof UpdateChannelPacket updateChannelPacket) {
-                ChannelConfig channelConfig = new ChannelConfig(updateChannelPacket.channelId());
-                database.saveChannelConfig(updateChannelPacket.channelName(), channelConfig);
+                ChannelConfig channelConfig = new ChannelConfig(updateChannelPacket.channel());
+                database.saveChannelConfig(updateChannelPacket.name(), channelConfig);
             }
         } while (packet != null);
     }
@@ -53,25 +53,15 @@ public class Client {
     }
 
     public void createGroupChannel(Name name, List<Name> members) throws IOException {
-        sync();
-
         UUID channelId = UUID.randomUUID();
         ChannelConfig channelConfig = new ChannelConfig(channelId);
         database.saveChannelConfig(name, channelConfig);
 
-        for (var member : members) {
-            UpdateChannelPacket updateChannelPacket = UpdateChannelPacket.withRandomId(
-                    channelId,
-                    name,
-                    member
-            );
-            connection.send(updateChannelPacket);
-        }
+        UpdateChannelPacket updateChannelPacket = new UpdateChannelPacket(channelId, name, members);
+        connection.send(updateChannelPacket);
     }
 
     public void sendMessage(UUID channel, Message message) throws IOException {
-        sync();
-
         SendMessagePacket sendMessagePacket = new SendMessagePacket(
                 channel,
                 message
@@ -81,8 +71,6 @@ public class Client {
     }
 
     public Stream<Message> readMessages(UUID channel, int count) throws IOException {
-        sync();
-
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
         connection.send(requestMessagesPacket);
 

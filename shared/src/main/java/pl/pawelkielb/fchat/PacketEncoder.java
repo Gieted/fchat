@@ -9,8 +9,11 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class PacketEncoder {
     public byte[] toBytes(Packet packet) {
@@ -27,6 +30,8 @@ public class PacketEncoder {
             packetBytes = toBytes(acknowledgePacket);
         } else if (packet instanceof LoginPacket loginPacket) {
             packetBytes = toBytes(loginPacket);
+        } else if (packet instanceof ChannelUpdatedPacket channelUpdatedPacket) {
+            packetBytes = toBytes(channelUpdatedPacket);
         } else {
             throw new IllegalArgumentException("This packet type is not supported");
         }
@@ -69,10 +74,9 @@ public class PacketEncoder {
     public byte[] toBytes(UpdateChannelPacket packet) {
         Properties properties = new Properties();
         properties.setProperty("type", "UpdateChannel");
-        properties.setProperty("packet_id", packet.packetId().toString());
-        properties.setProperty("channel_id", packet.channelId().toString());
-        properties.setProperty("channel_name", packet.channelName().value());
-        properties.setProperty("recipient", packet.recipient().value());
+        properties.setProperty("channel", packet.channel().toString());
+        properties.setProperty("name", packet.name().value());
+        properties.setProperty("members", packet.members().stream().map(Name::value).collect(Collectors.joining(",")));
         String packetString = propertiesToString(properties);
 
         return packetString.getBytes();
@@ -100,6 +104,17 @@ public class PacketEncoder {
         Properties properties = new Properties();
         properties.setProperty("type", "Login");
         properties.setProperty("username", packet.username().value());
+        String packetString = propertiesToString(properties);
+
+        return packetString.getBytes();
+    }
+
+    public byte[] toBytes(ChannelUpdatedPacket packet) {
+        Properties properties = new Properties();
+        properties.setProperty("type", "ChannelUpdated");
+        properties.setProperty("packet_id", packet.packetID().toString());
+        properties.setProperty("channel", packet.channel().toString());
+        properties.setProperty("name", packet.name().value());
         String packetString = propertiesToString(properties);
 
         return packetString.getBytes();
@@ -135,12 +150,11 @@ public class PacketEncoder {
             }
 
             case "UpdateChannel" -> {
-                UUID packetId = UUID.fromString(properties.getProperty("packet_id"));
-                UUID channelId = UUID.fromString(properties.getProperty("channel_id"));
-                Name channelName = Name.of(properties.getProperty("channel_name"));
-                Name recipient = Name.of(properties.getProperty("recipient"));
+                UUID channelId = UUID.fromString(properties.getProperty("channel"));
+                Name channelName = Name.of(properties.getProperty("name"));
+                List<Name> members = Arrays.stream(properties.getProperty("members").split(",")).map(Name::of).toList();
 
-                yield new UpdateChannelPacket(packetId, channelId, channelName, recipient);
+                yield new UpdateChannelPacket(channelId, channelName, members);
             }
 
             case "RequestLivePacket" -> {
@@ -159,6 +173,14 @@ public class PacketEncoder {
                 Name username = Name.of(properties.getProperty("username"));
 
                 yield new LoginPacket(username);
+            }
+
+            case "ChannelUpdated" -> {
+                UUID packetId = UUID.fromString(properties.getProperty("packet_id"));
+                UUID channel = UUID.fromString(properties.getProperty("channel"));
+                Name name = Name.of(properties.getProperty("name"));
+
+                yield new ChannelUpdatedPacket(packetId, channel, name);
             }
 
             default -> throw new PacketDecodeException("Unknown packet type");
