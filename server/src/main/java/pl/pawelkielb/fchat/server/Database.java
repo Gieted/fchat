@@ -3,6 +3,7 @@ package pl.pawelkielb.fchat.server;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket;
+import pl.pawelkielb.fchat.utils.Futures;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,7 +55,7 @@ public class Database {
                 return future;
             }).toList();
 
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenRun(updatePackets::complete);
+            Futures.allOf(futures).thenRun(updatePackets::complete);
         }));
 
         return updatePackets;
