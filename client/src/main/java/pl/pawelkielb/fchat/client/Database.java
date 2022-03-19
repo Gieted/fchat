@@ -9,6 +9,7 @@ import pl.pawelkielb.fchat.data.Name;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Properties;
 
@@ -31,6 +32,8 @@ public class Database {
         try (var clientPropertiesReader = Files.newBufferedReader(path)) {
             properties.load(clientPropertiesReader);
             return properties;
+        } catch (NoSuchFileException e) {
+            return null;
         } catch (IOException e) {
             throw new FileReadException(path);
         }
@@ -46,7 +49,11 @@ public class Database {
 
     public ClientConfig getClientConfig() {
         Path path = rootDirectory.resolve(clientConfigFileName);
-        Properties properties = readProperties(path);
+        Properties properties;
+        properties = readProperties(path);
+        if (properties == null) {
+            return null;
+        }
         Name username = Name.of(properties.getProperty("username"));
         String serverHost = properties.getProperty("server_host");
         int serverPort = Integer.parseInt(properties.getProperty("server_port"));

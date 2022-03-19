@@ -6,7 +6,6 @@ import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.exceptions.FileReadException;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
@@ -36,23 +35,18 @@ public class Main {
 
         Database database = new Database(Paths.get("."));
 
-        ClientConfig clientConfig;
+        ClientConfig clientConfig = null;
         ChannelConfig channelConfig = null;
         try {
             clientConfig = database.getClientConfig();
         } catch (FileReadException e) {
-            try {
-                Properties properties;
-                Path path = Paths.get("channel.properties");
-                properties = Database.readProperties(path);
-
+            Properties properties = Database.readProperties(Paths.get("channel.properties"));
+            if (properties != null) {
                 UUID channelId = UUID.fromString(properties.getProperty("id"));
 
                 channelConfig = new ChannelConfig(channelId);
                 database = new Database(Paths.get(".."));
                 clientConfig = database.getClientConfig();
-            } catch (FileReadException e1) {
-                clientConfig = null;
             }
         }
 

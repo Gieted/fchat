@@ -3,14 +3,6 @@ plugins {
     id("edu.sc.seis.launch4j") version "2.5.0"
 }
 
-launch4j {
-    mainClassName = "pl.pawelkielb.fchat.client.Main"
-    bundledJrePath = "./jre"
-    bundledJre64Bit = true
-    outfile = "fchat.exe"
-    headerType = "console"
-}
-
 repositories {
 }
 
@@ -28,4 +20,26 @@ tasks.create("release") {
     }
 
     file("build/tmp/jdk-17.0.2").renameTo(file("build/launch4j/jre"))
+}
+
+
+tasks.register<Jar>("uberJar") {
+    archiveClassifier.set("uber")
+
+    from(sourceSets.main.get().output)
+
+    dependsOn(configurations.runtimeClasspath)
+    from({
+        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
+    })
+}
+
+launch4j {
+    mainClassName = "pl.pawelkielb.fchat.client.Main"
+    bundledJrePath = "./jre"
+    bundledJre64Bit = true
+    outfile = "fchat.exe"
+    headerType = "console"
+    chdir = ""
+    jarTask = tasks["uberJar"]
 }
