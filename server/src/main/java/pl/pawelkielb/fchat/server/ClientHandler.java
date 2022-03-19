@@ -33,21 +33,23 @@ public class ClientHandler {
             } else {
                 handleFuture.complete(null);
             }
-        } else {
-            if (packet instanceof UpdateChannelPacket updateChannelPacket) {
-                ChannelUpdatedPacket channelUpdatedPacket = ChannelUpdatedPacket.withRandomUUID(
-                        updateChannelPacket.channel(),
-                        updateChannelPacket.name()
-                );
 
-                List<CompletableFuture<Void>> futures = new ArrayList<>();
-                for (var member : updateChannelPacket.members()) {
-                    CompletableFuture<Void> future = new CompletableFuture<>();
-                    futures.add(future);
-                    database.saveUpdatePacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
-                }
-                Futures.allOf(futures).thenRun(() -> handleFuture.complete(null));
+            return handleFuture;
+        }
+
+        if (packet instanceof UpdateChannelPacket updateChannelPacket) {
+            ChannelUpdatedPacket channelUpdatedPacket = ChannelUpdatedPacket.withRandomUUID(
+                    updateChannelPacket.channel(),
+                    updateChannelPacket.name()
+            );
+
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+            for (var member : updateChannelPacket.members()) {
+                CompletableFuture<Void> future = new CompletableFuture<>();
+                futures.add(future);
+                database.saveUpdatePacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
             }
+            Futures.allOf(futures).thenRun(() -> handleFuture.complete(null));
         }
 
         return handleFuture;
