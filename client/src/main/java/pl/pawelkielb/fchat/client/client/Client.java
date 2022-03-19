@@ -1,6 +1,9 @@
-package pl.pawelkielb.fchat.client;
+package pl.pawelkielb.fchat.client.client;
 
 import pl.pawelkielb.fchat.Connection;
+import pl.pawelkielb.fchat.client.ConnectionFactory;
+import pl.pawelkielb.fchat.client.Database;
+import pl.pawelkielb.fchat.client.client.exceptions.AlreadyInitializedException;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.data.Message;
@@ -20,20 +23,31 @@ import java.util.stream.Stream;
 import static pl.pawelkielb.fchat.Exceptions.i;
 
 public class Client {
-    private final Connection connection;
+    private Connection connection;
     private final Database database;
+    private final ConnectionFactory connectionFactory;
 
-    public Client(Connection connection, Database database) {
-        this.connection = connection;
+    public Client(Database database, ConnectionFactory connectionFactory) {
         this.database = database;
+        this.connectionFactory = connectionFactory;
     }
 
     public void init() {
+        if (database.getClientConfig() != null) {
+            throw new AlreadyInitializedException();
+        }
         ClientConfig defaultClientConfig = ClientConfig.defaults();
         database.saveClientConfig(defaultClientConfig);
     }
 
+    private void connect() {
+        ClientConfig clientConfig = database.getClientConfig();
+        connection = connectionFactory.create(clientConfig);
+    }
+
     public void sync() throws IOException {
+        connect();
+
         Packet packet;
         do {
             try {
@@ -49,10 +63,14 @@ public class Client {
     }
 
     public void createPrivateChannel(Name recipient) throws IOException {
+        connect();
+
         createGroupChannel(recipient, List.of(recipient));
     }
 
     public void createGroupChannel(Name name, List<Name> members) throws IOException {
+        connect();
+
         UUID channelId = UUID.randomUUID();
         ChannelConfig channelConfig = new ChannelConfig(channelId);
         database.saveChannelConfig(name, channelConfig);
@@ -62,6 +80,8 @@ public class Client {
     }
 
     public void sendMessage(UUID channel, Message message) throws IOException {
+        connect();
+
         SendMessagePacket sendMessagePacket = new SendMessagePacket(
                 channel,
                 message
@@ -71,6 +91,8 @@ public class Client {
     }
 
     public Stream<Message> readMessages(UUID channel, int count) throws IOException {
+        connect();
+
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
         connection.send(requestMessagesPacket);
 

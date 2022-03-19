@@ -1,5 +1,7 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.client.client.Client;
+import pl.pawelkielb.fchat.client.client.exceptions.AlreadyInitializedException;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;
@@ -24,14 +26,12 @@ public abstract class Commands {
                                Console console) {
 
         if (command.equals("init")) {
-            if (clientConfig != null) {
-                ExceptionHandler.onInitCalledInFchatDirectory();
-            }
-
             try {
                 client.init();
             } catch (FileWriteException e) {
                 ExceptionHandler.onCannotWriteFile(e.getPath());
+            } catch (AlreadyInitializedException e) {
+                ExceptionHandler.onAlreadyInitialized();
             }
 
             System.exit(0);

@@ -27,7 +27,7 @@ public abstract class ExceptionHandler {
         System.exit(3);
     }
 
-    public static void onInitCalledInFchatDirectory() {
+    public static void onAlreadyInitialized() {
         checkDevMode();
         printError("This is already an fchat directory");
         System.exit(4);

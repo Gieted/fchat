@@ -1,10 +1,9 @@
 package pl.pawelkielb.fchat.client;
 
-import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.PacketEncoder;
+import pl.pawelkielb.fchat.client.client.Client;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
-import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;
 import pl.pawelkielb.fchat.client.exceptions.FileReadException;
 
 import java.nio.file.Path;
@@ -40,7 +39,7 @@ public class Main {
         ClientConfig clientConfig;
         ChannelConfig channelConfig = null;
         try {
-            clientConfig = database.loadClientConfig();
+            clientConfig = database.getClientConfig();
         } catch (FileReadException e) {
             try {
                 Properties properties;
@@ -51,17 +50,16 @@ public class Main {
 
                 channelConfig = new ChannelConfig(channelId);
                 database = new Database(Paths.get(".."));
-                clientConfig = database.loadClientConfig();
+                clientConfig = database.getClientConfig();
             } catch (FileReadException e1) {
-                ExceptionHandler.onCannotFindClientConfig();
-                return;
+                clientConfig = null;
             }
         }
 
         PacketEncoder packetEncoder = new PacketEncoder();
         Executor executorService = Runnable::run;
-        Connection connection = new Connection(packetEncoder, clientConfig.serverHost(), clientConfig.serverPort(), executorService, executorService);
-        Client client = new Client(connection, database);
+        ConnectionFactory connectionFactory = new ConnectionFactory(packetEncoder, executorService, executorService);
+        Client client = new Client(database, connectionFactory);
         Console console = new Console();
 
         String command = args[0];

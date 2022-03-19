@@ -44,7 +44,7 @@ public class Database {
         }
     }
 
-    public ClientConfig loadClientConfig() {
+    public ClientConfig getClientConfig() {
         Path path = rootDirectory.resolve(clientConfigFileName);
         Properties properties = readProperties(path);
         Name username = Name.of(properties.getProperty("username"));
