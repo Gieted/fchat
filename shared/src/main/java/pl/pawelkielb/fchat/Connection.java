@@ -2,6 +2,7 @@ package pl.pawelkielb.fchat;
 
 import pl.pawelkielb.fchat.packets.Packet;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
@@ -49,25 +50,17 @@ public class Connection {
         return ByteBuffer.allocate(4).putInt(integer).array();
     }
 
-    private CompletableFuture<?> connect() {
-        CompletableFuture<?> future = new CompletableFuture<>();
-
+    private void connect() throws IOException {
         if (socket == null) {
-            ioThreads.execute(r(() -> {
-                socket = new Socket(address, port);
-                future.complete(null);
-            }));
-        } else {
-            future.complete(null);
+            socket = new Socket(address, port);
         }
-
-        return future;
     }
 
     public CompletableFuture<?> send(Packet packet) {
         CompletableFuture<?> future = new CompletableFuture<>();
 
-        connect().thenRun(() -> ioThreads.execute(r(() -> {
+        ioThreads.execute(r(() -> {
+            connect();
             OutputStream outputStream = socket.getOutputStream();
 
             if (packet == null) {
@@ -84,14 +77,16 @@ public class Connection {
                     future.complete(null);
                 }));
             }));
-        })));
+        }));
 
         return future;
     }
 
     public CompletableFuture<Packet> read() {
         CompletableFuture<Packet> future = new CompletableFuture<>();
-        connect().thenRun(() -> ioThreads.execute(r(() -> {
+        ioThreads.execute(r(() -> {
+            connect();
+
             InputStream input = socket.getInputStream();
             int packetSize = intFromBytes(input.readNBytes(4));
 
@@ -106,7 +101,7 @@ public class Connection {
 
                 future.complete(packetEncoder.decode(packetBytes));
             }));
-        })));
+        }));
 
         return future;
     }
