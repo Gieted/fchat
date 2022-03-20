@@ -72,9 +72,6 @@ public class Client {
         connect();
 
         UUID channelId = UUID.randomUUID();
-        ChannelConfig channelConfig = new ChannelConfig(channelId);
-        database.saveChannelConfig(name, channelConfig);
-
         UpdateChannelPacket updateChannelPacket = new UpdateChannelPacket(channelId, name, members);
         connection.send(updateChannelPacket);
     }
