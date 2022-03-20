@@ -1,6 +1,7 @@
 package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.Connection;
+import pl.pawelkielb.fchat.DisconnectedException;
 import pl.pawelkielb.fchat.PacketEncoder;
 
 import java.io.IOException;
@@ -17,9 +18,12 @@ public class Main {
     public static void nextPacket(Connection connection,
                                   ClientHandler clientHandler) {
 
-        connection.read().thenAccept(packet ->
-                clientHandler.handlePacket(packet).thenRun(() ->
-                        nextPacket(connection, clientHandler)));
+        try {
+            connection.read().thenAccept(packet ->
+                    clientHandler.handlePacket(packet).thenRun(() ->
+                            nextPacket(connection, clientHandler)));
+        } catch (DisconnectedException ignore) {
+        }
     }
 
     public static void startServer(int port) throws IOException {

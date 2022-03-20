@@ -40,6 +40,11 @@ public class Database {
         Path directory = updatesDirectory.resolve(String.valueOf(username.hashCode()));
 
         ioThreads.execute(r(() -> {
+            if (!Files.exists(directory)) {
+                updatePackets.complete();
+                return;
+            }
+
             List<CompletableFuture<Void>> futures = Files.list(directory).map(file -> {
                 CompletableFuture<Void> future = new CompletableFuture<>();
                 ioThreads.execute(r(() -> {
@@ -65,7 +70,7 @@ public class Database {
         CompletableFuture<Void> future = new CompletableFuture<>();
         Path directory = updatesDirectory.resolve(nameToFilename(username));
         ioThreads.execute(r(() -> {
-            Files.createDirectory(directory);
+            Files.createDirectories(directory);
             Path file = directory.resolve(updatedPacket.channel().toString());
             byte[] bytes = packetEncoder.toBytes(updatedPacket);
             Files.write(file, bytes);

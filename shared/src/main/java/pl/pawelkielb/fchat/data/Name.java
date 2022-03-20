@@ -29,4 +29,9 @@ public final class Name {
     public String toString() {
         return value;
     }
+
+    @Override
+    public int hashCode() {
+        return value.hashCode();
+    }
 }

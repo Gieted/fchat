@@ -25,7 +25,10 @@ public class ClientHandler {
         if (username == null) {
             if (packet instanceof LoginPacket loginPacket) {
                 database.listUpdatePackets(loginPacket.username())
-                        .subscribe(connection::send, () -> handlePacketFuture.complete(null));
+                        .subscribe(connection::send, () -> {
+                            connection.send(null);
+                            handlePacketFuture.complete(null);
+                        });
 
                 username = loginPacket.username();
             } else {
@@ -42,7 +45,9 @@ public class ClientHandler {
             );
 
             List<CompletableFuture<Void>> futures = new ArrayList<>();
-            for (var member : updateChannelPacket.members()) {
+            List<Name> members = new ArrayList<>(updateChannelPacket.members());
+            members.add(this.username);
+            for (var member : members) {
                 CompletableFuture<Void> future = new CompletableFuture<>();
                 futures.add(future);
                 database.saveUpdatePacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));

@@ -8,10 +8,7 @@ import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
-import pl.pawelkielb.fchat.packets.Packet;
-import pl.pawelkielb.fchat.packets.RequestMessagesPacket;
-import pl.pawelkielb.fchat.packets.SendMessagePacket;
-import pl.pawelkielb.fchat.packets.UpdateChannelPacket;
+import pl.pawelkielb.fchat.packets.*;
 
 import java.io.IOException;
 import java.util.List;
@@ -41,8 +38,19 @@ public class Client {
     }
 
     private void connect() {
-        ClientConfig clientConfig = database.getClientConfig();
-        connection = connectionFactory.create(clientConfig);
+        if (connection == null) {
+            ClientConfig clientConfig = database.getClientConfig();
+            connection = connectionFactory.create(clientConfig);
+            connection.send(new LoginPacket(clientConfig.username()));
+        }
+    }
+
+    private Packet readSync() {
+        try {
+            return connection.read().get();
+        } catch (ExecutionException | InterruptedException e) {
+            throw new AssertionError();
+        }
     }
 
     public void sync() throws IOException {
@@ -50,16 +58,14 @@ public class Client {
 
         Packet packet;
         do {
-            try {
-                packet = connection.read().get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new AssertionError();
-            }
-            if (packet instanceof UpdateChannelPacket updateChannelPacket) {
-                ChannelConfig channelConfig = new ChannelConfig(updateChannelPacket.channel());
-                database.saveChannelConfig(updateChannelPacket.name(), channelConfig);
+            packet = readSync();
+            if (packet instanceof ChannelUpdatedPacket channelUpdatedPacket) {
+                ChannelConfig channelConfig = new ChannelConfig(channelUpdatedPacket.channel());
+                database.saveChannelConfig(channelUpdatedPacket.name(), channelConfig);
             }
         } while (packet != null);
+
+        System.out.println("sync finished!");
     }
 
     public void createPrivateChannel(Name recipient) throws IOException {
@@ -74,6 +80,7 @@ public class Client {
         UUID channelId = UUID.randomUUID();
         UpdateChannelPacket updateChannelPacket = new UpdateChannelPacket(channelId, name, members);
         connection.send(updateChannelPacket);
+        sync();
     }
 
     public void sendMessage(UUID channel, Message message) throws IOException {
