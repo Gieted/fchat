@@ -59,23 +59,22 @@ public class Connection {
     public CompletableFuture<Void> send(Packet packet) {
         CompletableFuture<Void> future = new CompletableFuture<>();
 
-        ioThreads.execute(r(() -> {
-            connect();
-            OutputStream outputStream = socket.getOutputStream();
+        workerThreads.execute(r(() -> {
+            byte[] packetBytes = packetEncoder.toBytes(packet);
 
-            if (packet == null) {
-                outputStream.write(0);
-                future.complete(null);
-                return;
-            }
+            ioThreads.execute(r(() -> {
+                connect();
+                OutputStream outputStream = socket.getOutputStream();
 
-            workerThreads.execute(r(() -> {
-                byte[] packetBytes = packetEncoder.toBytes(packet);
-                ioThreads.execute(r(() -> {
-                    outputStream.write(intToBytes(packetBytes.length));
-                    outputStream.write(packetBytes);
+                if (packet == null) {
+                    outputStream.write(0);
                     future.complete(null);
-                }));
+                    return;
+                }
+
+                outputStream.write(intToBytes(packetBytes.length));
+                outputStream.write(packetBytes);
+                future.complete(null);
             }));
         }));
 
