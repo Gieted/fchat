@@ -52,12 +52,7 @@ public class Main {
         PacketEncoder packetEncoder = new PacketEncoder();
         Executor executor = Runnable::run;
         Console console = new Console();
-
-        String command = args[0];
-        List<String> commandArguments = Arrays.asList(args).subList(1, args.length);
-        Commands.execute(
-                command,
-                commandArguments,
+        CommandHandler commandHandler = new CommandHandler(
                 clientConfig,
                 channelConfig,
                 console,
@@ -65,5 +60,9 @@ public class Main {
                 packetEncoder,
                 executor
         );
+
+        String command = args[0];
+        List<String> commandArguments = Arrays.asList(args).subList(1, args.length);
+        commandHandler.execute(command, commandArguments);
     }
 }
