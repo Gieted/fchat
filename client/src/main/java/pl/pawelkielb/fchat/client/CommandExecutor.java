@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-public class CommandHandler {
+public class CommandExecutor {
     private static void printMessage(Console console, Message message) {
         console.println(String.format("%s: %s", message.author(), message.content()));
         console.println();
@@ -28,12 +28,12 @@ public class CommandHandler {
     private final PacketEncoder packetEncoder;
     private final Executor executor;
 
-    public CommandHandler(ClientConfig clientConfig,
-                          ChannelConfig channelConfig,
-                          Console console,
-                          Database database,
-                          PacketEncoder packetEncoder,
-                          Executor executor) {
+    public CommandExecutor(ClientConfig clientConfig,
+                           ChannelConfig channelConfig,
+                           Console console,
+                           Database database,
+                           PacketEncoder packetEncoder,
+                           Executor executor) {
 
         this.clientConfig = clientConfig;
         this.channelConfig = channelConfig;
