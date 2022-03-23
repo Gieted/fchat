@@ -22,3 +22,4 @@ subprojects {
 }
 
 project.extra["kotestVersion"] = "5.2.1"
+project.extra["mockkVersion"] = "1.12.3"

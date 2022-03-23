@@ -31,6 +31,19 @@ public final class Name {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Name other) {
+            return this.value.equals(other.value);
+        }
+
+        if (obj instanceof String other) {
+            return this.value.equals(other);
+        }
+
+        return false;
+    }
+
+    @Override
     public int hashCode() {
         return value.hashCode();
     }

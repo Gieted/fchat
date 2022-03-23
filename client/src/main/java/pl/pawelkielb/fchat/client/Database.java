@@ -71,7 +71,7 @@ public class Database {
         writeProperties(path, properties);
     }
 
-    public void saveChannelConfig(Name name, ChannelConfig channelConfig) {
+    public void saveChannel(Name name, ChannelConfig channelConfig) {
         Path directoryPath = rootDirectory.resolve(sanitizeAsPath(name.value()));
         try {
             Files.createDirectory(directoryPath);

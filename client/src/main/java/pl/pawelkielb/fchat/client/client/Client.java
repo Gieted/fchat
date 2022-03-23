@@ -45,22 +45,18 @@ public class Client {
     }
 
     public void sync() throws IOException {
-        if (loggedIn) {
-            throw new IllegalStateException();
-        }
-
         login();
+
+        connection.send(new RequestUpdatesPacket());
 
         Packet packet;
         do {
             packet = readSync();
             if (packet instanceof ChannelUpdatedPacket channelUpdatedPacket) {
                 ChannelConfig channelConfig = new ChannelConfig(channelUpdatedPacket.channel());
-                database.saveChannelConfig(channelUpdatedPacket.name(), channelConfig);
+                database.saveChannel(channelUpdatedPacket.name(), channelConfig);
             }
         } while (packet != null);
-
-        System.out.println("sync finished!");
     }
 
     public void createPrivateChannel(Name recipient) throws IOException {
