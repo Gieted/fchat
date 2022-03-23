@@ -2,6 +2,7 @@ package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.DisconnectedException;
+import pl.pawelkielb.fchat.Logger;
 import pl.pawelkielb.fchat.PacketEncoder;
 
 import java.io.IOException;
@@ -33,6 +34,7 @@ public class Main {
 
         PacketEncoder packetEncoder = new PacketEncoder();
         Database database = new Database(workerThreads, ioThreads, Paths.get("."), packetEncoder);
+        Logger logger = new ConsoleLogger();
 
         ServerSocket server = new ServerSocket(port);
 
@@ -41,7 +43,7 @@ public class Main {
             while (true) {
                 Socket socket = server.accept();
                 workerThreads.execute(() -> {
-                    Connection connection = new Connection(packetEncoder, socket, workerThreads, ioThreads);
+                    Connection connection = new Connection(packetEncoder, socket, workerThreads, ioThreads, logger);
                     ClientHandler clientHandler = new ClientHandler(database, connection);
                     nextPacket(connection, clientHandler);
                 });

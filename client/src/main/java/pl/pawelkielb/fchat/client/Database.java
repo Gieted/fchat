@@ -8,6 +8,7 @@ import pl.pawelkielb.fchat.data.Name;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -43,7 +44,7 @@ public class Database {
         try (OutputStream outputStream = Files.newOutputStream(path)) {
             properties.store(outputStream, null);
         } catch (IOException e) {
-            throw new FileWriteException(path);
+            throw new FileWriteException(path, e);
         }
     }
 
@@ -75,8 +76,9 @@ public class Database {
         Path directoryPath = rootDirectory.resolve(sanitizeAsPath(name.value()));
         try {
             Files.createDirectory(directoryPath);
+        } catch (FileAlreadyExistsException ignore) {
         } catch (IOException e) {
-            throw new FileWriteException(directoryPath);
+            throw new FileWriteException(directoryPath, e);
         }
 
         Properties properties = new Properties();

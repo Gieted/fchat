@@ -1,6 +1,7 @@
 package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.Connection;
+import pl.pawelkielb.fchat.ProtocolException;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
 import pl.pawelkielb.fchat.utils.Futures;
@@ -19,26 +20,29 @@ public class ClientHandler {
         this.connection = connection;
     }
 
+    private void checkLoggedIn() {
+        if (username == null) {
+            throw new ProtocolException();
+        }
+    }
+
     public CompletableFuture<Void> handlePacket(Packet packet) {
         CompletableFuture<Void> handlePacketFuture = new CompletableFuture<>();
 
-        if (username == null) {
-            if (packet instanceof LoginPacket loginPacket) {
-                database.listUpdatePackets(loginPacket.username())
-                        .subscribe(connection::send, () -> {
-                            connection.send(null);
-                            handlePacketFuture.complete(null);
-                        });
+        if (packet instanceof LoginPacket loginPacket) {
+            username = loginPacket.username();
+            handlePacketFuture.complete(null);
+        } else if (packet instanceof RequestUpdatesPacket) {
+            checkLoggedIn();
 
-                username = loginPacket.username();
-            } else {
-                handlePacketFuture.complete(null);
-            }
+            database.listUpdatePackets(username)
+                    .subscribe(connection::send, () -> {
+                        connection.send(null);
+                        handlePacketFuture.complete(null);
+                    });
+        } else if (packet instanceof UpdateChannelPacket updateChannelPacket) {
+            checkLoggedIn();
 
-            return handlePacketFuture;
-        }
-
-        if (packet instanceof UpdateChannelPacket updateChannelPacket) {
             ChannelUpdatedPacket channelUpdatedPacket = ChannelUpdatedPacket.withRandomUUID(
                     updateChannelPacket.channel(),
                     updateChannelPacket.name()

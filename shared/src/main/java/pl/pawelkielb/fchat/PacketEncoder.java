@@ -32,6 +32,8 @@ public class PacketEncoder {
             packetBytes = toBytes(loginPacket);
         } else if (packet instanceof ChannelUpdatedPacket channelUpdatedPacket) {
             packetBytes = toBytes(channelUpdatedPacket);
+        } else if (packet instanceof RequestUpdatesPacket) {
+            packetBytes = emptyPacket("RequestUpdates");
         } else {
             throw new IllegalArgumentException("This packet type is not supported");
         }
@@ -120,6 +122,14 @@ public class PacketEncoder {
         return packetString.getBytes();
     }
 
+    public byte[] emptyPacket(String type) {
+        Properties properties = new Properties();
+        properties.setProperty("type", type);
+        String packetString = propertiesToString(properties);
+
+        return packetString.getBytes();
+    }
+
     public Packet decode(byte[] packetBytes) {
         String packetString = new String(packetBytes);
         Properties properties = new Properties();
@@ -182,6 +192,8 @@ public class PacketEncoder {
 
                 yield new ChannelUpdatedPacket(packetId, channel, name);
             }
+
+            case "RequestUpdates" -> new RequestUpdatesPacket();
 
             default -> throw new PacketDecodeException("Unknown packet type");
         };

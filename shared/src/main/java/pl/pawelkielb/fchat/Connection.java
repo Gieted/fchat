@@ -19,6 +19,7 @@ public class Connection {
     private Socket socket;
     private final Executor workerThreads;
     private final Executor ioThreads;
+    private final Logger logger;
     private String address;
     private int port;
 
@@ -29,9 +30,11 @@ public class Connection {
                       String address,
                       int port,
                       Executor workerThreads,
-                      Executor ioThreads) {
+                      Executor ioThreads,
+                      Logger logger) {
 
-        this(packetEncoder, null, workerThreads, ioThreads);
+
+        this(packetEncoder, null, workerThreads, ioThreads, logger);
         this.address = address;
         this.port = port;
     }
@@ -39,12 +42,14 @@ public class Connection {
     public Connection(PacketEncoder packetEncoder,
                       Socket socket,
                       Executor workerThreads,
-                      Executor ioThreads) {
+                      Executor ioThreads,
+                      Logger logger) {
 
         this.packetEncoder = packetEncoder;
         this.socket = socket;
         this.workerThreads = workerThreads;
         this.ioThreads = ioThreads;
+        this.logger = logger;
     }
 
     private static int intFromBytes(byte[] bytes) {
@@ -62,7 +67,6 @@ public class Connection {
     }
 
     private CompletableFuture<Void> sendNext(Packet packet) {
-        System.out.println(packet);
         CompletableFuture<Void> future = new CompletableFuture<>();
 
         workerThreads.execute(r(() -> {
@@ -80,18 +84,19 @@ public class Connection {
                     OutputStream outputStream = socket.getOutputStream();
 
                     if (packet == null) {
-                        outputStream.write(0);
+                        outputStream.write(new byte[]{0, 0, 0, 0});
+                        logger.info("Sent packet: null");
                         future.complete(null);
                         return;
                     }
 
                     outputStream.write(intToBytes(packetBytes.length));
                     outputStream.write(packetBytes);
+                    logger.info("Sent packet: " + packet);
+                    future.complete(null);
                 } catch (IOException e) {
                     future.completeExceptionally(new DisconnectedException());
-                    return;
                 }
-                future.complete(null);
             }));
         }));
 
@@ -114,9 +119,9 @@ public class Connection {
                 int packetSize;
                 packetSize = intFromBytes(input.readNBytes(4));
 
-
                 // null packet
                 if (packetSize == 0) {
+                    logger.info("Recieved packet: null");
                     future.complete(null);
                     return;
                 }
@@ -127,7 +132,11 @@ public class Connection {
                 return;
             }
 
-            workerThreads.execute(r(() -> future.complete(packetEncoder.decode(packetBytes))));
+            workerThreads.execute(r(() -> {
+                Packet packet = packetEncoder.decode(packetBytes);
+                logger.info("Recieved packet: " + packet);
+                future.complete(packet);
+            }));
         }));
 
         return future;

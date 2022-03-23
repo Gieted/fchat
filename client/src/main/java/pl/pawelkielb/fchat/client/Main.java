@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.Event;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
@@ -52,6 +53,7 @@ public class Main {
         PacketEncoder packetEncoder = new PacketEncoder();
         Executor executor = Runnable::run;
         Console console = new Console();
+        Event applicationExitEvent = new Event();
 
         String command = args[0];
         List<String> commandArguments = Arrays.asList(args).subList(1, args.length);
@@ -63,7 +65,10 @@ public class Main {
                 console,
                 database,
                 packetEncoder,
-                executor
+                executor,
+                applicationExitEvent
         );
+
+        applicationExitEvent.trigger();
     }
 }
