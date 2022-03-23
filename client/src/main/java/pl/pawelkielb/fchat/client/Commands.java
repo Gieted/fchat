@@ -1,5 +1,7 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.Connection;
+import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.client.client.Client;
 import pl.pawelkielb.fchat.client.client.exceptions.AlreadyInitializedException;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
@@ -11,6 +13,7 @@ import pl.pawelkielb.fchat.data.Name;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 public abstract class Commands {
     private static void printMessage(Console console, Message message) {
@@ -22,12 +25,15 @@ public abstract class Commands {
                                List<String> args,
                                ClientConfig clientConfig,
                                ChannelConfig channelConfig,
-                               Client client,
-                               Console console) {
+                               Console console,
+                               Database database,
+                               PacketEncoder packetEncoder,
+                               Executor executor) {
 
         if (command.equals("init")) {
             try {
-                client.init();
+                ClientConfig defaultClientConfig = ClientConfig.defaults();
+                database.saveClientConfig(defaultClientConfig);
             } catch (FileWriteException e) {
                 ExceptionHandler.onCannotWriteFile(e.getPath());
             } catch (AlreadyInitializedException e) {
@@ -36,6 +42,16 @@ public abstract class Commands {
 
             System.exit(0);
         }
+
+        Connection connection = new Connection(
+                packetEncoder,
+                clientConfig.serverHost(),
+                clientConfig.serverPort(),
+                executor,
+                executor
+        );
+
+        Client client = new Client(database, connection, clientConfig);
 
         switch (command) {
             case "create" -> {

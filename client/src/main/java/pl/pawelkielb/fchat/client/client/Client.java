@@ -1,9 +1,7 @@
 package pl.pawelkielb.fchat.client.client;
 
 import pl.pawelkielb.fchat.Connection;
-import pl.pawelkielb.fchat.client.ConnectionFactory;
 import pl.pawelkielb.fchat.client.Database;
-import pl.pawelkielb.fchat.client.client.exceptions.AlreadyInitializedException;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.data.Message;
@@ -20,29 +18,15 @@ import java.util.stream.Stream;
 import static pl.pawelkielb.fchat.Exceptions.i;
 
 public class Client {
-    private Connection connection;
     private final Database database;
-    private final ConnectionFactory connectionFactory;
+    private final Connection connection;
+    private final ClientConfig clientConfig;
+    private boolean loggedIn = false;
 
-    public Client(Database database, ConnectionFactory connectionFactory) {
+    public Client(Database database, Connection connection, ClientConfig clientConfig) {
         this.database = database;
-        this.connectionFactory = connectionFactory;
-    }
-
-    public void init() {
-        if (database.getClientConfig() != null) {
-            throw new AlreadyInitializedException();
-        }
-        ClientConfig defaultClientConfig = ClientConfig.defaults();
-        database.saveClientConfig(defaultClientConfig);
-    }
-
-    private void connect() {
-        if (connection == null) {
-            ClientConfig clientConfig = database.getClientConfig();
-            connection = connectionFactory.create(clientConfig);
-            connection.send(new LoginPacket(clientConfig.username()));
-        }
+        this.connection = connection;
+        this.clientConfig = clientConfig;
     }
 
     private Packet readSync() {
@@ -53,8 +37,19 @@ public class Client {
         }
     }
 
+    private void login() {
+        if (!loggedIn) {
+            connection.send(new LoginPacket(clientConfig.username()));
+            loggedIn = true;
+        }
+    }
+
     public void sync() throws IOException {
-        connect();
+        if (loggedIn) {
+            throw new IllegalStateException();
+        }
+
+        login();
 
         Packet packet;
         do {
@@ -69,13 +64,11 @@ public class Client {
     }
 
     public void createPrivateChannel(Name recipient) throws IOException {
-        connect();
-
         createGroupChannel(recipient, List.of(recipient));
     }
 
     public void createGroupChannel(Name name, List<Name> members) throws IOException {
-        connect();
+        login();
 
         UUID channelId = UUID.randomUUID();
         UpdateChannelPacket updateChannelPacket = new UpdateChannelPacket(channelId, name, members);
@@ -84,7 +77,7 @@ public class Client {
     }
 
     public void sendMessage(UUID channel, Message message) throws IOException {
-        connect();
+        login();
 
         SendMessagePacket sendMessagePacket = new SendMessagePacket(
                 channel,
@@ -95,7 +88,7 @@ public class Client {
     }
 
     public Stream<Message> readMessages(UUID channel, int count) throws IOException {
-        connect();
+        login();
 
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
         connection.send(requestMessagesPacket);

@@ -1,7 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.PacketEncoder;
-import pl.pawelkielb.fchat.client.client.Client;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.exceptions.FileReadException;
@@ -51,9 +50,7 @@ public class Main {
         }
 
         PacketEncoder packetEncoder = new PacketEncoder();
-        Executor executorService = Runnable::run;
-        ConnectionFactory connectionFactory = new ConnectionFactory(packetEncoder, executorService, executorService);
-        Client client = new Client(database, connectionFactory);
+        Executor executor = Runnable::run;
         Console console = new Console();
 
         String command = args[0];
@@ -63,8 +60,10 @@ public class Main {
                 commandArguments,
                 clientConfig,
                 channelConfig,
-                client,
-                console
+                console,
+                database,
+                packetEncoder,
+                executor
         );
     }
 }
