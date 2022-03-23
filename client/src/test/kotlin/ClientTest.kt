@@ -1,4 +1,6 @@
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.WordSpec
+import io.kotest.core.spec.style.scopes.WordSpecShouldContainerScope
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -11,11 +13,12 @@ import pl.pawelkielb.fchat.data.Name
 import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket
 import pl.pawelkielb.fchat.packets.LoginPacket
 import pl.pawelkielb.fchat.packets.RequestUpdatesPacket
+import pl.pawelkielb.fchat.packets.UpdateChannelPacket
 import java.util.*
 import java.util.concurrent.CompletableFuture
 
 class ClientTest : WordSpec({
-    "sync()" should {
+    suspend fun WordSpecShouldContainerScope.login() {
         "send LoginPacket if it's the first command" {
             val connection = mockk<Connection>(relaxed = true)
             val database = mockk<Database>()
@@ -28,6 +31,10 @@ class ClientTest : WordSpec({
             client.sync()
             verify(exactly = 1) { connection.send(LoginPacket(config.username)) }
         }
+    }
+
+    "sync()" should {
+        login()
 
         "send RequestUpdatesPacket" {
             val connection = mockk<Connection>(relaxed = true)
@@ -76,6 +83,36 @@ class ClientTest : WordSpec({
             client.sync()
             verify(exactly = 0) {
                 database.saveChannel(any(), any())
+            }
+        }
+    }
+
+    "createPrivateChannel()" should {
+        login()
+
+        "send UpdateChannelPacket" {
+            val connection = mockk<Connection>(relaxed = true)
+            val database = mockk<Database>()
+            val config = ClientConfig.defaults()
+            val client = Client(database, connection, config)
+
+            every { connection.read() } returns CompletableFuture.completedFuture(null)
+
+            val paul = Name.of("Paul")
+
+            client.createPrivateChannel(paul)
+
+            verify { connection.send(match { it is UpdateChannelPacket && it.name == paul && it.members == listOf(paul) }) }
+        }
+
+        "throw NullPointerException when null is passed as parameter" {
+            val connection = mockk<Connection>()
+            val database = mockk<Database>()
+            val config = ClientConfig.defaults()
+            val client = Client(database, connection, config)
+
+            shouldThrow<NullPointerException> {
+                client.createPrivateChannel(null)
             }
         }
     }
