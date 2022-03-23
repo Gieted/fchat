@@ -1,5 +1,5 @@
 plugins {
-    java
+    kotlin("jvm") version "1.6.10" apply false
 }
 
 allprojects {
@@ -9,8 +9,16 @@ allprojects {
     repositories {
         mavenCentral()
     }
+}
 
+subprojects {
     tasks.withType<JavaCompile> {
         options.encoding = "UTF-8"
     }
+
+    tasks.withType<Test>().configureEach {
+        useJUnitPlatform()
+    }
 }
+
+project.extra["kotestVersion"] = "5.2.1"
