@@ -68,4 +68,10 @@ public abstract class ExceptionHandler {
         printError("Cannot find fchat.properties file. Are you in fchat's directory?");
         System.exit(10);
     }
+
+    public static void onUnknownCommand(String command) {
+        checkDevMode();
+        printError("Unknown command: " + command);
+        System.exit(11);
+    }
 }

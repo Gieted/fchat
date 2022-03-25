@@ -146,6 +146,8 @@ public abstract class Commands {
                     ExceptionHandler.onNetworkException();
                 }
             }
+
+            default -> ExceptionHandler.onUnknownCommand(command);
         }
     }
 }
