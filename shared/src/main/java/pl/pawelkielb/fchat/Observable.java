@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat.server;
+package pl.pawelkielb.fchat;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -119,7 +119,7 @@ public class PacketEncoder {
     }
 
     public Packet decode(byte[] packetBytes) {
-        String packetString = new String(packetBytes);
+        String packetString = new String(packetBytes, StandardCharsets.UTF_8);
         Properties properties = new Properties();
         try {
             properties.load(new StringReader(packetString));

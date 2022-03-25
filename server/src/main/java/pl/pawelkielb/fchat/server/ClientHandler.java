@@ -61,6 +61,12 @@ public class ClientHandler {
         } else if (packet instanceof SendMessagePacket sendMessagePacket) {
             database.saveMessage(sendMessagePacket.channel(), sendMessagePacket.message());
             handlePacketFuture.complete(null);
+        } else if (packet instanceof RequestMessagesPacket requestMessagesPacket) {
+            database.readMessages(requestMessagesPacket.channel(), requestMessagesPacket.count()).subscribe(message ->
+                    connection.send(new SendMessagePacket(requestMessagesPacket.channel(), message)), () -> {
+                connection.send(null);
+                handlePacketFuture.complete(null);
+            });
         } else {
             handlePacketFuture.complete(null);
         }

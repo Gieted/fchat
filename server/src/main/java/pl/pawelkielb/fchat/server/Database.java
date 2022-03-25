@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.server;
 
+import pl.pawelkielb.fchat.Observable;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
@@ -136,5 +137,49 @@ public class Database {
         }));
 
         return future;
+    }
+
+    private static long bytesToLong(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
+        buffer.put(bytes);
+        return buffer.getLong(0);
+    }
+
+    public Observable<Message> readMessages(UUID channel, int count) {
+        Observable<Message> messages = new Observable<>();
+
+        Path directory = messagesDirectory.resolve(channel.toString());
+        Path messagesPath = directory.resolve("messages.txt");
+        Path indexPath = directory.resolve("index");
+
+        ioThreads.execute(r(() -> {
+            try (RandomAccessFile index = new RandomAccessFile(indexPath.toFile(), "r");
+                 RandomAccessFile messagesFile = new RandomAccessFile(messagesPath.toFile(), "r")) {
+
+                long startPosition = index.length() - (Long.BYTES * 2L * count);
+                index.seek(startPosition > 0 ? startPosition : 0);
+                while (index.getFilePointer() < index.length()) {
+                    byte[] startBytes = new byte[Long.BYTES];
+                    byte[] lengthBytes = new byte[Long.BYTES];
+                    index.read(startBytes);
+                    index.read(lengthBytes);
+                    long start = bytesToLong(startBytes);
+                    int length = (int) bytesToLong(lengthBytes);
+
+                    messagesFile.seek(start);
+                    byte[] messageEntry = new byte[length];
+                    messagesFile.read(messageEntry);
+
+                    String message = new String(messageEntry);
+                    String[] messageSplit = message.split("\n");
+                    Name author = Name.of(messageSplit[0]);
+                    String content = messageSplit[1];
+                    messages.onNext(new Message(author, content));
+                }
+                messages.complete();
+            }
+        }));
+
+        return messages;
     }
 }

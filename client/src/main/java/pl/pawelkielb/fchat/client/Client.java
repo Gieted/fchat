@@ -9,13 +9,10 @@ import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
-
-import static pl.pawelkielb.fchat.Exceptions.i;
+import java.util.stream.StreamSupport;
 
 public class Client {
     private final Database database;
@@ -89,13 +86,52 @@ public class Client {
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
         connection.send(requestMessagesPacket);
 
-        return IntStream.range(0, count).mapToObj(i((i) -> {
-            while (true) {
-                Packet packet = connection.read().get();
-                if (packet instanceof SendMessagePacket sendMessagePacket) {
-                    return sendMessagePacket.message();
+        Iterator<Message> iterator = new Iterator<Message>() {
+            boolean finished = false;
+            Message nextMessage = null;
+
+            void getNext() {
+                while (true) {
+                    Packet packet = readSync();
+
+                    if (packet == null) {
+                        finished = true;
+                        break;
+                    }
+
+                    if (packet instanceof SendMessagePacket sendMessagePacket) {
+                        nextMessage = sendMessagePacket.message();
+                        break;
+                    }
                 }
             }
-        }));
+
+            @Override
+            public boolean hasNext() {
+                if (nextMessage == null) {
+                    getNext();
+                }
+
+                return !finished;
+            }
+
+            @Override
+            public Message next() {
+                if (finished) {
+                    throw new NoSuchElementException();
+                }
+
+                if (nextMessage == null) {
+                    getNext();
+                }
+
+                Message message = nextMessage;
+                nextMessage = null;
+
+                return message;
+            }
+        };
+
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false);
     }
 }

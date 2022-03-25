@@ -20,7 +20,6 @@ import java.util.concurrent.Executor;
 public abstract class Commands {
     private static void printMessage(Console console, Message message) {
         console.println(String.format("%s: %s", message.author(), message.content()));
-        console.println();
     }
 
     public static void execute(String command,
