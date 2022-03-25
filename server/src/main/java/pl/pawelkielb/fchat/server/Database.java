@@ -7,6 +7,7 @@ import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket;
 import pl.pawelkielb.fchat.utils.Futures;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -176,6 +177,8 @@ public class Database {
                     String content = messageSplit[1];
                     messages.onNext(new Message(author, content));
                 }
+                messages.complete();
+            } catch (FileNotFoundException e) {
                 messages.complete();
             }
         }));
