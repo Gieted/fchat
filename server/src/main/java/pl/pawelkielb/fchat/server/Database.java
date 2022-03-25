@@ -1,12 +1,17 @@
 package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.PacketEncoder;
+import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket;
 import pl.pawelkielb.fchat.utils.Futures;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -18,6 +23,7 @@ public class Database {
     private final Executor ioThreads;
     private final Executor workerThreads;
     private final Path updatesDirectory;
+    private final Path messagesDirectory;
     private final PacketEncoder packetEncoder;
 
     public Database(Executor workerThreads,
@@ -28,6 +34,7 @@ public class Database {
         this.ioThreads = ioThreads;
         this.workerThreads = workerThreads;
         this.updatesDirectory = rootDirectory.resolve("updates");
+        this.messagesDirectory = rootDirectory.resolve("messages");
         this.packetEncoder = packetEncoder;
     }
 
@@ -86,6 +93,48 @@ public class Database {
         ioThreads.execute(r(() -> {
             Path file = directory.resolve(channelId.toString());
             Files.delete(file);
+            future.complete(null);
+        }));
+
+        return future;
+    }
+
+    private static final byte[] newLineBytes = "\n".getBytes();
+
+    private static void newLine(RandomAccessFile raf) throws IOException {
+        raf.write(newLineBytes);
+    }
+
+    public CompletableFuture<Void> saveMessage(UUID channel, Message message) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        Path directory = messagesDirectory.resolve(channel.toString());
+        Path messagesPath = directory.resolve("messages.txt");
+        Path indexPath = directory.resolve("index");
+
+        ioThreads.execute(r(() -> {
+            Files.createDirectories(directory);
+            long start;
+            long end;
+            try (RandomAccessFile raf = new RandomAccessFile(messagesPath.toFile(), "rw")) {
+                // go to end of file
+                raf.seek(raf.length());
+
+                start = raf.getFilePointer();
+                byte[] authorBytes = message.author().value().getBytes();
+                raf.write(authorBytes);
+                newLine(raf);
+                byte[] contentBytes = message.content().getBytes();
+                raf.write(contentBytes);
+                end = authorBytes.length + newLineBytes.length + contentBytes.length;
+                newLine(raf);
+                newLine(raf);
+            }
+
+            ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 2);
+            buffer.putLong(start);
+            buffer.putLong(end);
+
+            Files.write(indexPath, buffer.array(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             future.complete(null);
         }));
 

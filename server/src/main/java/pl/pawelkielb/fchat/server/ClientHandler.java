@@ -58,6 +58,11 @@ public class ClientHandler {
                 database.saveUpdatePacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
             }
             Futures.allOf(futures).thenRun(() -> handlePacketFuture.complete(null));
+        } else if (packet instanceof SendMessagePacket sendMessagePacket) {
+            database.saveMessage(sendMessagePacket.channel(), sendMessagePacket.message());
+            handlePacketFuture.complete(null);
+        } else {
+            handlePacketFuture.complete(null);
         }
 
         return handlePacketFuture;

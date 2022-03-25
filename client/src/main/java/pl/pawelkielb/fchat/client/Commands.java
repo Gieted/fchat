@@ -111,7 +111,7 @@ public abstract class Commands {
                     return;
                 }
 
-                String message = String.join(" ", args.subList(1, args.size()));
+                String message = String.join(" ", args);
                 try {
                     client.sendMessage(channelConfig.id(), new Message(clientConfig.username(), message));
                 } catch (IOException e) {

@@ -4,7 +4,6 @@ import pl.pawelkielb.fchat.Event;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
-import pl.pawelkielb.fchat.client.exceptions.FileReadException;
 
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -35,11 +34,10 @@ public class Main {
 
         Database database = new Database(Paths.get("."));
 
-        ClientConfig clientConfig = null;
+        ClientConfig clientConfig;
         ChannelConfig channelConfig = null;
-        try {
-            clientConfig = database.getClientConfig();
-        } catch (FileReadException e) {
+        clientConfig = database.getClientConfig();
+        if (clientConfig == null) {
             Properties properties = Database.readProperties(Paths.get("channel.properties"));
             if (properties != null) {
                 UUID channelId = UUID.fromString(properties.getProperty("id"));

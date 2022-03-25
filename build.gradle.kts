@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     kotlin("jvm") version "1.6.10" apply false
 }
@@ -14,6 +16,12 @@ allprojects {
 subprojects {
     tasks.withType<JavaCompile> {
         options.encoding = "UTF-8"
+    }
+
+    tasks.withType<KotlinCompile> {
+        kotlinOptions {
+            jvmTarget = "17"
+        }
     }
 
     tasks.withType<Test>().configureEach {
