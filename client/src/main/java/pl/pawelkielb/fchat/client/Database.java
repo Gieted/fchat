@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
+import pl.pawelkielb.fchat.StringUtils;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.exceptions.FileReadException;
@@ -73,12 +74,18 @@ public class Database {
     }
 
     public void saveChannel(Name name, ChannelConfig channelConfig) {
-        Path directoryPath = rootDirectory.resolve(sanitizeAsPath(name.value()));
-        try {
-            Files.createDirectory(directoryPath);
-        } catch (FileAlreadyExistsException ignore) {
-        } catch (IOException e) {
-            throw new FileWriteException(directoryPath, e);
+        String directoryName = sanitizeAsPath(name.value());
+        Path directoryPath;
+        while (true) {
+            directoryPath = rootDirectory.resolve(directoryName);
+            try {
+                Files.createDirectory(directoryPath);
+                break;
+            } catch (FileAlreadyExistsException e) {
+                directoryName = StringUtils.increment(directoryName);
+            } catch (IOException e) {
+                throw new FileWriteException(directoryPath, e);
+            }
         }
 
         Properties properties = new Properties();
