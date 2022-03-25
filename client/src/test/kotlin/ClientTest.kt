@@ -1,6 +1,5 @@
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.WordSpec
-import io.kotest.core.spec.style.scopes.WordSpecShouldContainerScope
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -18,7 +17,7 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 
 class ClientTest : WordSpec({
-    suspend fun WordSpecShouldContainerScope.login() {
+    "sync()" should {
         "send LoginPacket if it's the first command" {
             val connection = mockk<Connection>(relaxed = true)
             val database = mockk<Database>()
@@ -31,10 +30,6 @@ class ClientTest : WordSpec({
             client.sync()
             verify(exactly = 1) { connection.send(LoginPacket(config.username)) }
         }
-    }
-
-    "sync()" should {
-        login()
 
         "send RequestUpdatesPacket" {
             val connection = mockk<Connection>(relaxed = true)
@@ -88,8 +83,6 @@ class ClientTest : WordSpec({
     }
 
     "createPrivateChannel()" should {
-        login()
-
         "send UpdateChannelPacket" {
             val connection = mockk<Connection>(relaxed = true)
             val database = mockk<Database>()
