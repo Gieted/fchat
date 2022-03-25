@@ -26,8 +26,6 @@ public class PacketEncoder {
             packetBytes = toBytes(updateChannelPacket);
         } else if (packet instanceof RequestLivePacket requestLivePacket) {
             packetBytes = toBytes(requestLivePacket);
-        } else if (packet instanceof AcknowledgePacket acknowledgePacket) {
-            packetBytes = toBytes(acknowledgePacket);
         } else if (packet instanceof LoginPacket loginPacket) {
             packetBytes = toBytes(loginPacket);
         } else if (packet instanceof ChannelUpdatedPacket channelUpdatedPacket) {
@@ -93,15 +91,6 @@ public class PacketEncoder {
         return packetString.getBytes();
     }
 
-    public byte[] toBytes(AcknowledgePacket packet) {
-        Properties properties = new Properties();
-        properties.setProperty("type", "Acknowledge");
-        properties.setProperty("packet_id", packet.packetId().toString());
-        String packetString = propertiesToString(properties);
-
-        return packetString.getBytes();
-    }
-
     public byte[] toBytes(LoginPacket packet) {
         Properties properties = new Properties();
         properties.setProperty("type", "Login");
@@ -114,7 +103,6 @@ public class PacketEncoder {
     public byte[] toBytes(ChannelUpdatedPacket packet) {
         Properties properties = new Properties();
         properties.setProperty("type", "ChannelUpdated");
-        properties.setProperty("packet_id", packet.packetID().toString());
         properties.setProperty("channel", packet.channel().toString());
         properties.setProperty("name", packet.name().value());
         String packetString = propertiesToString(properties);
@@ -173,12 +161,6 @@ public class PacketEncoder {
                 yield new RequestLivePacket(channel);
             }
 
-            case "Acknowledge" -> {
-                UUID packetId = UUID.fromString(properties.getProperty("packet_id"));
-
-                yield new AcknowledgePacket(packetId);
-            }
-
             case "Login" -> {
                 Name username = Name.of(properties.getProperty("username"));
 
@@ -186,11 +168,10 @@ public class PacketEncoder {
             }
 
             case "ChannelUpdated" -> {
-                UUID packetId = UUID.fromString(properties.getProperty("packet_id"));
                 UUID channel = UUID.fromString(properties.getProperty("channel"));
                 Name name = Name.of(properties.getProperty("name"));
 
-                yield new ChannelUpdatedPacket(packetId, channel, name);
+                yield new ChannelUpdatedPacket(channel, name);
             }
 
             case "RequestUpdates" -> new RequestUpdatesPacket();

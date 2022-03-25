@@ -103,9 +103,15 @@ public class Connection {
         return future;
     }
 
-    public void send(Packet packet) {
+    public CompletableFuture<Void> send(Packet packet) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
         queue.add(packet);
-        mutex.lock(() -> sendNext(queue.poll()).thenRun(mutex::unlock));
+        mutex.lock(() -> sendNext(queue.poll()).thenRun(() -> {
+            future.complete(null);
+            mutex.unlock();
+        }));
+
+        return future;
     }
 
     public CompletableFuture<Packet> read() {

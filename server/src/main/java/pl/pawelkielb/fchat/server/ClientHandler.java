@@ -36,14 +36,15 @@ public class ClientHandler {
             checkLoggedIn();
 
             database.listUpdatePackets(username)
-                    .subscribe(connection::send, () -> {
+                    .subscribe(channelUpdatedPacket -> connection.send(channelUpdatedPacket).thenRun(() ->
+                            database.deleteUpdatePacket(username, channelUpdatedPacket.channel())), () -> {
                         connection.send(null);
                         handlePacketFuture.complete(null);
                     });
         } else if (packet instanceof UpdateChannelPacket updateChannelPacket) {
             checkLoggedIn();
 
-            ChannelUpdatedPacket channelUpdatedPacket = ChannelUpdatedPacket.withRandomUUID(
+            ChannelUpdatedPacket channelUpdatedPacket = new ChannelUpdatedPacket(
                     updateChannelPacket.channel(),
                     updateChannelPacket.name()
             );
@@ -57,11 +58,6 @@ public class ClientHandler {
                 database.saveUpdatePacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
             }
             Futures.allOf(futures).thenRun(() -> handlePacketFuture.complete(null));
-        }
-
-        if (packet instanceof AcknowledgePacket acknowledgePacket) {
-            database.deleteUpdatePacket(username, acknowledgePacket.packetId())
-                    .thenRun(() -> handlePacketFuture.complete(null));
         }
 
         return handlePacketFuture;
