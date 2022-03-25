@@ -57,8 +57,8 @@ class ClientTest : WordSpec({
             val channelId = UUID.randomUUID()
 
             every { connection.read() } returnsMany listOf(
-                ChannelUpdatedPacket.withRandomUUID(channelId, Name.of("Coders")),
-                ChannelUpdatedPacket.withRandomUUID(channelId, Name.of("Book readers")),
+                ChannelUpdatedPacket(channelId, Name.of("Coders")),
+                ChannelUpdatedPacket(channelId, Name.of("Book readers")),
                 null
             ).map { CompletableFuture.completedFuture(it) }
 

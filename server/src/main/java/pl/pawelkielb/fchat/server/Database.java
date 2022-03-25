@@ -99,10 +99,8 @@ public class Database {
         return future;
     }
 
-    private static final byte[] newLineBytes = "\n".getBytes();
-
     private static void newLine(RandomAccessFile raf) throws IOException {
-        raf.write(newLineBytes);
+        raf.write("\n".getBytes());
     }
 
     public CompletableFuture<Void> saveMessage(UUID channel, Message message) {
@@ -114,25 +112,24 @@ public class Database {
         ioThreads.execute(r(() -> {
             Files.createDirectories(directory);
             long start;
-            long end;
+            long length;
             try (RandomAccessFile raf = new RandomAccessFile(messagesPath.toFile(), "rw")) {
                 // go to end of file
                 raf.seek(raf.length());
 
                 start = raf.getFilePointer();
-                byte[] authorBytes = message.author().value().getBytes();
-                raf.write(authorBytes);
+                raf.write(message.author().value().getBytes());
                 newLine(raf);
-                byte[] contentBytes = message.content().getBytes();
-                raf.write(contentBytes);
-                end = authorBytes.length + newLineBytes.length + contentBytes.length;
+                raf.write(message.content().getBytes());
+                long end = raf.getFilePointer();
+                length = end - start;
                 newLine(raf);
                 newLine(raf);
             }
 
             ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 2);
             buffer.putLong(start);
-            buffer.putLong(end);
+            buffer.putLong(length);
 
             Files.write(indexPath, buffer.array(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             future.complete(null);
