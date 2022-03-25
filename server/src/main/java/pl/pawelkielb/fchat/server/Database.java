@@ -32,12 +32,12 @@ public class Database {
     }
 
     private static String nameToFilename(Name name) {
-        return String.valueOf(name.hashCode());
+        return String.valueOf(name.value().toLowerCase().hashCode());
     }
 
     public Observable<ChannelUpdatedPacket> listUpdatePackets(Name username) {
         Observable<ChannelUpdatedPacket> updatePackets = new Observable<>();
-        Path directory = updatesDirectory.resolve(String.valueOf(username.hashCode()));
+        Path directory = updatesDirectory.resolve(nameToFilename(username));
 
         ioThreads.execute(r(() -> {
             if (!Files.exists(directory)) {
