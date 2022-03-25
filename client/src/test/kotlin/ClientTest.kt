@@ -5,8 +5,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import pl.pawelkielb.fchat.Connection
+import pl.pawelkielb.fchat.client.Client
 import pl.pawelkielb.fchat.client.Database
-import pl.pawelkielb.fchat.client.client.Client
 import pl.pawelkielb.fchat.client.config.ChannelConfig
 import pl.pawelkielb.fchat.client.config.ClientConfig
 import pl.pawelkielb.fchat.data.Name

@@ -4,7 +4,6 @@ import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.Event;
 import pl.pawelkielb.fchat.Logger;
 import pl.pawelkielb.fchat.PacketEncoder;
-import pl.pawelkielb.fchat.client.client.Client;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;

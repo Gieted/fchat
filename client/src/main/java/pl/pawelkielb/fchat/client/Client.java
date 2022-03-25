@@ -1,8 +1,7 @@
-package pl.pawelkielb.fchat.client.client;
+package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.DisconnectedException;
-import pl.pawelkielb.fchat.client.Database;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.data.Message;
