@@ -62,7 +62,7 @@ public class ClientHandler {
             database.saveMessage(sendMessagePacket.channel(), sendMessagePacket.message());
             handlePacketFuture.complete(null);
         } else if (packet instanceof RequestMessagesPacket requestMessagesPacket) {
-            database.readMessages(requestMessagesPacket.channel(), requestMessagesPacket.count()).subscribe(message ->
+            database.getMessages(requestMessagesPacket.channel(), requestMessagesPacket.count()).subscribe(message ->
                     connection.send(new SendMessagePacket(requestMessagesPacket.channel(), message)), () -> {
                 connection.send(null);
                 handlePacketFuture.complete(null);

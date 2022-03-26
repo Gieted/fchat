@@ -33,8 +33,8 @@ public class Main {
         Executor ioThreads = Executors.newFixedThreadPool(1000);
 
         PacketEncoder packetEncoder = new PacketEncoder();
-        Database database = new Database(workerThreads, ioThreads, Paths.get("."), packetEncoder);
         Logger logger = new ConsoleLogger();
+        Database database = new Database(workerThreads, ioThreads, Paths.get("."), packetEncoder, logger);
 
         ServerSocket server = new ServerSocket(port);
 

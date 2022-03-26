@@ -1,7 +1,9 @@
 package pl.pawelkielb.fchat.server;
 
+import pl.pawelkielb.fchat.Logger;
 import pl.pawelkielb.fchat.Observable;
 import pl.pawelkielb.fchat.PacketEncoder;
+import pl.pawelkielb.fchat.TaskQueue;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket;
@@ -14,10 +16,13 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
 import static pl.pawelkielb.fchat.Exceptions.r;
 
@@ -27,17 +32,19 @@ public class Database {
     private final Path updatesDirectory;
     private final Path messagesDirectory;
     private final PacketEncoder packetEncoder;
+    private final Logger logger;
 
     public Database(Executor workerThreads,
                     Executor ioThreads,
                     Path rootDirectory,
-                    PacketEncoder packetEncoder) {
+                    PacketEncoder packetEncoder, Logger logger) {
 
         this.ioThreads = ioThreads;
         this.workerThreads = workerThreads;
         this.updatesDirectory = rootDirectory.resolve("updates");
         this.messagesDirectory = rootDirectory.resolve("messages");
         this.packetEncoder = packetEncoder;
+        this.logger = logger;
     }
 
     private static String nameToFilename(Name name) {
@@ -105,39 +112,63 @@ public class Database {
         raf.write("\n".getBytes());
     }
 
+    private final Map<UUID, TaskQueue> queueByChannel = new HashMap<>();
+    private final TaskQueue queueByChannelTaskQueue = new TaskQueue();
+
     public CompletableFuture<Void> saveMessage(UUID channel, Message message) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        Path directory = messagesDirectory.resolve(channel.toString());
-        Path messagesPath = directory.resolve("messages.txt");
-        Path indexPath = directory.resolve("index");
+        CompletableFuture<Void> saveFuture = new CompletableFuture<>();
 
-        ioThreads.execute(r(() -> {
-            Files.createDirectories(directory);
-            long start;
-            long length;
-            try (RandomAccessFile raf = new RandomAccessFile(messagesPath.toFile(), "rw")) {
-                // go to end of file
-                raf.seek(raf.length());
+        getQueueForChannel(channel, taskQueue -> taskQueue.runSuspend(() -> {
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            Path directory = messagesDirectory.resolve(channel.toString());
+            Path messagesPath = directory.resolve("messages.txt");
+            Path indexPath = directory.resolve("index");
 
-                start = raf.getFilePointer();
-                raf.write(message.author().value().getBytes());
-                newLine(raf);
-                raf.write(message.content().getBytes());
-                long end = raf.getFilePointer();
-                length = end - start;
-                newLine(raf);
-                newLine(raf);
-            }
+            ioThreads.execute(r(() -> {
+                Files.createDirectories(directory);
+                long start;
+                long length;
+                try (RandomAccessFile raf = new RandomAccessFile(messagesPath.toFile(), "rw")) {
+                    // go to end of file
+                    raf.seek(raf.length());
 
-            ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 2);
-            buffer.putLong(start);
-            buffer.putLong(length);
+                    start = raf.getFilePointer();
+                    raf.write(message.author().value().getBytes());
+                    newLine(raf);
+                    raf.write(message.content().getBytes());
+                    long end = raf.getFilePointer();
+                    length = end - start;
+                    newLine(raf);
+                    newLine(raf);
+                }
 
-            Files.write(indexPath, buffer.array(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-            future.complete(null);
+                ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 2);
+                buffer.putLong(start);
+                buffer.putLong(length);
+
+                Files.write(indexPath, buffer.array(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                queueByChannelTaskQueue.run(() -> {
+                    future.complete(null);
+                    saveFuture.complete(null);
+                });
+            }));
+
+            return future;
         }));
 
-        return future;
+        return saveFuture;
+    }
+
+    private void getQueueForChannel(UUID channel, Consumer<TaskQueue> processQueue) {
+        queueByChannelTaskQueue.run(() -> {
+            TaskQueue taskQueue = queueByChannel.get(channel);
+            if (taskQueue == null) {
+                taskQueue = new TaskQueue();
+                queueByChannel.put(channel, taskQueue);
+            }
+
+            processQueue.accept(taskQueue);
+        });
     }
 
     private static long bytesToLong(byte[] bytes) {
@@ -146,41 +177,55 @@ public class Database {
         return buffer.getLong(0);
     }
 
-    public Observable<Message> readMessages(UUID channel, int count) {
+    public Observable<Message> getMessages(UUID channel, int count) {
         Observable<Message> messages = new Observable<>();
 
-        Path directory = messagesDirectory.resolve(channel.toString());
-        Path messagesPath = directory.resolve("messages.txt");
-        Path indexPath = directory.resolve("index");
+        getQueueForChannel(channel, taskQueue -> taskQueue.runSuspend(() -> {
+            CompletableFuture<Void> future = new CompletableFuture<>();
 
-        ioThreads.execute(r(() -> {
-            try (RandomAccessFile index = new RandomAccessFile(indexPath.toFile(), "r");
-                 RandomAccessFile messagesFile = new RandomAccessFile(messagesPath.toFile(), "r")) {
+            Path directory = messagesDirectory.resolve(channel.toString());
+            Path messagesPath = directory.resolve("messages.txt");
+            Path indexPath = directory.resolve("index");
 
-                long startPosition = index.length() - (Long.BYTES * 2L * count);
-                index.seek(startPosition > 0 ? startPosition : 0);
-                while (index.getFilePointer() < index.length()) {
-                    byte[] startBytes = new byte[Long.BYTES];
-                    byte[] lengthBytes = new byte[Long.BYTES];
-                    index.read(startBytes);
-                    index.read(lengthBytes);
-                    long start = bytesToLong(startBytes);
-                    int length = (int) bytesToLong(lengthBytes);
+            ioThreads.execute(r(() -> {
+                long messagesRead = 0;
+                try (RandomAccessFile index = new RandomAccessFile(indexPath.toFile(), "r");
+                     RandomAccessFile messagesFile = new RandomAccessFile(messagesPath.toFile(), "r")) {
 
-                    messagesFile.seek(start);
-                    byte[] messageEntry = new byte[length];
-                    messagesFile.read(messageEntry);
+                    long startPosition = index.length() - (Long.BYTES * 2L * count);
+                    startPosition = startPosition > 0 ? startPosition : 0;
+                    index.seek(startPosition);
+                    while (index.getFilePointer() < index.length()) {
+                        byte[] startBytes = new byte[Long.BYTES];
+                        byte[] lengthBytes = new byte[Long.BYTES];
+                        index.read(startBytes);
+                        index.read(lengthBytes);
+                        long start = bytesToLong(startBytes);
+                        int length = (int) bytesToLong(lengthBytes);
 
-                    String message = new String(messageEntry);
-                    String[] messageSplit = message.split("\n");
-                    Name author = Name.of(messageSplit[0]);
-                    String content = messageSplit[1];
-                    messages.onNext(new Message(author, content));
+                        messagesFile.seek(start);
+                        byte[] messageEntry = new byte[length];
+                        messagesFile.read(messageEntry);
+
+                        String messageString = new String(messageEntry);
+                        String[] messageSplit = messageString.split("\n");
+                        Name author = Name.of(messageSplit[0]);
+                        String content = messageSplit[1];
+
+                        Message message = new Message(author, content);
+                        messages.onNext(message);
+                        messagesRead++;
+                    }
+                } catch (FileNotFoundException ignore) {
                 }
-                messages.complete();
-            } catch (FileNotFoundException e) {
-                messages.complete();
-            }
+                logger.info(String.format("Read %d messages for channel: %s", messagesRead, channel));
+                queueByChannelTaskQueue.run(() -> {
+                    future.complete(null);
+                    messages.complete();
+                });
+            }));
+
+            return future;
         }));
 
         return messages;

@@ -7,8 +7,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -23,8 +21,7 @@ public class Connection {
     private String address;
     private int port;
 
-    private final Queue<Packet> queue = new LinkedList<>();
-    private final Mutex mutex = new Mutex();
+    private final TaskQueue taskQueue = new TaskQueue();
 
     public Connection(PacketEncoder packetEncoder,
                       String address,
@@ -66,52 +63,46 @@ public class Connection {
         }
     }
 
-    private CompletableFuture<Void> sendNext(Packet packet) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-
-        workerThreads.execute(r(() -> {
-            byte[] packetBytes;
-            if (packet != null) {
-                packetBytes = packetEncoder.toBytes(packet);
-            } else {
-                packetBytes = null;
-            }
-
-            ioThreads.execute(r(() -> {
-                connect();
-
-                try {
-                    OutputStream outputStream = socket.getOutputStream();
-
-                    if (packet == null) {
-                        outputStream.write(new byte[]{0, 0, 0, 0});
-                        logger.info("Sent packet: null");
-                        future.complete(null);
-                        return;
-                    }
-
-                    outputStream.write(intToBytes(packetBytes.length));
-                    outputStream.write(packetBytes);
-                    logger.info("Sent packet: " + packet);
-                    future.complete(null);
-                } catch (IOException e) {
-                    future.completeExceptionally(new DisconnectedException());
-                }
-            }));
-        }));
-
-        return future;
-    }
-
     public CompletableFuture<Void> send(Packet packet) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        queue.add(packet);
-        mutex.lock(() -> sendNext(queue.poll()).thenRun(() -> {
-            future.complete(null);
-            mutex.unlock();
-        }));
+        CompletableFuture<Void> sendFuture = new CompletableFuture<>();
+        taskQueue.runSuspend(() -> {
+            CompletableFuture<Void> future = new CompletableFuture<>();
 
-        return future;
+            workerThreads.execute(r(() -> {
+                byte[] packetBytes;
+                if (packet != null) {
+                    packetBytes = packetEncoder.toBytes(packet);
+                } else {
+                    packetBytes = null;
+                }
+
+                ioThreads.execute(r(() -> {
+                    connect();
+
+                    try {
+                        OutputStream outputStream = socket.getOutputStream();
+
+                        if (packet == null) {
+                            outputStream.write(new byte[]{0, 0, 0, 0});
+                            logger.info("Sent packet: null");
+                            future.complete(null);
+                            return;
+                        }
+
+                        outputStream.write(intToBytes(packetBytes.length));
+                        outputStream.write(packetBytes);
+                        logger.info("Sent packet: " + packet);
+                        future.complete(null);
+                    } catch (IOException e) {
+                        future.completeExceptionally(new DisconnectedException());
+                    }
+                }));
+            }));
+
+            return future;
+        });
+
+        return sendFuture;
     }
 
     public CompletableFuture<Packet> read() {
