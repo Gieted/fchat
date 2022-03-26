@@ -8,8 +8,6 @@ import pl.pawelkielb.fchat.client.config.ClientConfig;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 
 public class Main {
@@ -38,14 +36,10 @@ public class Main {
         ChannelConfig channelConfig = null;
         clientConfig = database.getClientConfig();
         if (clientConfig == null) {
-            Properties properties = Database.readProperties(Paths.get("channel.properties"));
-            if (properties != null) {
-                UUID channelId = UUID.fromString(properties.getProperty("id"));
+            channelConfig = Database.readChannelConfig(Paths.get("channel.properties"));
 
-                channelConfig = new ChannelConfig(channelId);
-                database = new Database(Paths.get(".."));
-                clientConfig = database.getClientConfig();
-            }
+            database = new Database(Paths.get(".."));
+            clientConfig = database.getClientConfig();
         }
 
         PacketEncoder packetEncoder = new PacketEncoder();

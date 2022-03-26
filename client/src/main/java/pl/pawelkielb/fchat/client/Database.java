@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.UUID;
 
 public class Database {
     private final Path rootDirectory;
@@ -49,6 +50,17 @@ public class Database {
         }
     }
 
+    public static ChannelConfig readChannelConfig(Path path) {
+        Properties properties = readProperties(path);
+        if (properties == null) {
+            return null;
+        }
+
+        UUID channelId = UUID.fromString(properties.getProperty("id"));
+
+        return new ChannelConfig(channelId);
+    }
+
     public ClientConfig getClientConfig() {
         Path path = rootDirectory.resolve(clientConfigFileName);
         Properties properties;
@@ -76,12 +88,18 @@ public class Database {
     public void saveChannel(Name name, ChannelConfig channelConfig) {
         String directoryName = sanitizeAsPath(name.value());
         Path directoryPath;
+        Path configPath;
         while (true) {
             directoryPath = rootDirectory.resolve(directoryName);
+            configPath = directoryPath.resolve(channelConfigFileName);
             try {
                 Files.createDirectory(directoryPath);
                 break;
             } catch (FileAlreadyExistsException e) {
+                ChannelConfig existingConfig = readChannelConfig(configPath);
+                if (existingConfig != null && existingConfig.id().equals(channelConfig.id())) {
+                    break;
+                }
                 directoryName = StringUtils.increment(directoryName);
             } catch (IOException e) {
                 throw new FileWriteException(directoryPath, e);
@@ -90,7 +108,6 @@ public class Database {
 
         Properties properties = new Properties();
         properties.setProperty("id", channelConfig.id().toString());
-        Path configPath = directoryPath.resolve(channelConfigFileName);
 
         writeProperties(configPath, properties);
     }
