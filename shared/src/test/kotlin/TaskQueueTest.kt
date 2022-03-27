@@ -7,7 +7,7 @@ import pl.pawelkielb.fchat.TaskQueue
 import kotlin.time.Duration.Companion.seconds
 
 class TaskQueueTest : WordSpec({
-    "runSuspend()" should {
+    "run()" should {
         "run tasks one by one" {
             val queue = TaskQueue()
             var i = 0
