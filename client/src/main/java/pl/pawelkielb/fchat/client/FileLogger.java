@@ -1,6 +1,5 @@
 package pl.pawelkielb.fchat.client;
 
-import pl.pawelkielb.fchat.Event;
 import pl.pawelkielb.fchat.Logger;
 
 import java.io.BufferedWriter;

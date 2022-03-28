@@ -1,6 +1,5 @@
 package pl.pawelkielb.fchat.client;
 
-import pl.pawelkielb.fchat.Event;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
@@ -38,8 +37,10 @@ public class Main {
         if (clientConfig == null) {
             channelConfig = Database.readChannelConfig(Paths.get("channel.properties"));
 
-            database = new Database(Paths.get(".."));
-            clientConfig = database.getClientConfig();
+            if (channelConfig != null) {
+                database = new Database(Paths.get(".."));
+                clientConfig = database.getClientConfig();
+            }
         }
 
         PacketEncoder packetEncoder = new PacketEncoder();

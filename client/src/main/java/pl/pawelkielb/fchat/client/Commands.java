@@ -1,7 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.Connection;
-import pl.pawelkielb.fchat.Event;
 import pl.pawelkielb.fchat.Logger;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
@@ -29,7 +28,8 @@ public abstract class Commands {
                                Console console,
                                Database database,
                                PacketEncoder packetEncoder,
-                               Executor executor, Event applicationExitEvent) {
+                               Executor executor,
+                               Event applicationExitEvent) {
 
         if (command.equals("init")) {
             if (clientConfig != null) {
