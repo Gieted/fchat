@@ -1,13 +1,11 @@
 package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.Logger;
-import pl.pawelkielb.fchat.MultiTaskQueue;
 import pl.pawelkielb.fchat.Observable;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket;
-import pl.pawelkielb.fchat.utils.Futures;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;

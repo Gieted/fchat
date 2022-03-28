@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat.utils;
+package pl.pawelkielb.fchat.server;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;

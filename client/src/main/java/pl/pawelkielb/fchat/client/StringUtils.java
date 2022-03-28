@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat;
+package pl.pawelkielb.fchat.client;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

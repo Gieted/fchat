@@ -4,7 +4,6 @@ import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.ProtocolException;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
-import pl.pawelkielb.fchat.utils.Futures;
 
 import java.util.ArrayList;
 import java.util.List;

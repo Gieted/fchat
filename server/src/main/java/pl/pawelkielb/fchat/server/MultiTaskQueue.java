@@ -1,4 +1,6 @@
-package pl.pawelkielb.fchat;
+package pl.pawelkielb.fchat.server;
+
+import pl.pawelkielb.fchat.TaskQueue;
 
 import java.util.HashMap;
 import java.util.Map;
