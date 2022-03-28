@@ -67,6 +67,16 @@ public abstract class Exceptions {
         };
     }
 
+    public static <T, E extends Exception> Consumer<T> c(Runnable_WithExceptions<E> fn) {
+        return (t) -> {
+            try {
+                fn.run();
+            } catch (Exception e) {
+                throwAsUnchecked(e);
+            }
+        };
+    }
+
     public static <T, R, E extends Exception> Function<T, R> f(Function_WithExceptions<T, R, E> fn) {
         return (t) -> {
             try {

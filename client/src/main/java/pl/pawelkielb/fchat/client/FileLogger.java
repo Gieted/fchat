@@ -1,20 +1,21 @@
 package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.Logger;
+import pl.pawelkielb.fchat.Observable;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static pl.pawelkielb.fchat.Exceptions.r;
+import static pl.pawelkielb.fchat.Exceptions.c;
 
 public class FileLogger implements Logger {
     private Path path;
-    private final Event applicationExitEvent;
+    private final Observable<Void> applicationExitEvent;
     private BufferedWriter writer;
 
-    public FileLogger(Path path, Event applicationExitEvent) {
+    public FileLogger(Path path, Observable<Void> applicationExitEvent) {
         this.path = path;
         this.applicationExitEvent = applicationExitEvent;
     }
@@ -24,7 +25,7 @@ public class FileLogger implements Logger {
         if (writer == null) {
             try {
                 writer = Files.newBufferedWriter(path);
-                applicationExitEvent.subscribe(r(() -> writer.close()));
+                applicationExitEvent.subscribe(c(() -> writer.close()));
             } catch (IOException ignore) {
             }
             path = null;

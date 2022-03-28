@@ -37,7 +37,7 @@ public abstract class Commands {
                                Database database,
                                PacketEncoder packetEncoder,
                                Executor executor,
-                               Event applicationExitEvent) {
+                               Observable<Void> applicationExitEvent) {
 
         if (command.equals("init")) {
             if (clientConfig != null) {
