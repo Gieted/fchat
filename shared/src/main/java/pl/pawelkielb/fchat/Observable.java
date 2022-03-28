@@ -2,7 +2,6 @@ package pl.pawelkielb.fchat;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class Observable<T> {
@@ -26,17 +25,5 @@ public class Observable<T> {
 
     public void complete() {
         completionListeners.forEach(Runnable::run);
-    }
-
-    public Observable<T> skip(int n) {
-        Observable<T> result = new Observable<>();
-        AtomicInteger i = new AtomicInteger(1);
-        this.subscribe(it -> {
-            if (i.getAndIncrement() > n) {
-                result.onNext(it);
-            }
-        }, result::complete);
-
-        return result;
     }
 }
