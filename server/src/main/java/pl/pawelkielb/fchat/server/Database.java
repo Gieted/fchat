@@ -1,9 +1,9 @@
 package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.Logger;
+import pl.pawelkielb.fchat.MultiTaskQueue;
 import pl.pawelkielb.fchat.Observable;
 import pl.pawelkielb.fchat.PacketEncoder;
-import pl.pawelkielb.fchat.TaskQueue;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket;
@@ -16,13 +16,10 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 
 import static pl.pawelkielb.fchat.Exceptions.r;
 
@@ -51,12 +48,15 @@ public class Database {
         return String.valueOf(name.value().toLowerCase().hashCode());
     }
 
+    private final MultiTaskQueue<Name> updatesTaskQueue = new MultiTaskQueue<>();
+
     public Observable<ChannelUpdatedPacket> listUpdatePackets(Name username) {
         Observable<ChannelUpdatedPacket> updatePackets = new Observable<>();
         Path directory = updatesDirectory.resolve(nameToFilename(username));
 
-        ioThreads.execute(r(() -> {
+        updatesTaskQueue.runSuspend(username, task -> ioThreads.execute(r(() -> {
             if (!Files.exists(directory)) {
+                task.complete(null);
                 updatePackets.complete();
                 return;
             }
@@ -76,50 +76,49 @@ public class Database {
                 return future;
             }).toList();
 
-            Futures.allOf(futures).thenRun(updatePackets::complete);
-        }));
+            Futures.allOf(futures).thenRun(() -> {
+                logger.info(String.format("Read %d updates for user %s", futures.size(), username));
+                task.complete(null);
+                updatePackets.complete();
+            });
+        })));
 
         return updatePackets;
     }
 
     public CompletableFuture<Void> saveUpdatePacket(Name username, ChannelUpdatedPacket updatedPacket) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
         Path directory = updatesDirectory.resolve(nameToFilename(username));
-        ioThreads.execute(r(() -> {
+
+        return updatesTaskQueue.runSuspend(username, task -> ioThreads.execute(r(() -> {
             Files.createDirectories(directory);
             Path file = directory.resolve(updatedPacket.channel().toString());
             byte[] bytes = packetEncoder.toBytes(updatedPacket);
             Files.write(file, bytes);
-            future.complete(null);
-        }));
 
-        return future;
+            logger.info(String.format("Saved update for user %s: %s", username, updatedPacket));
+            task.complete(null);
+        })));
     }
 
     public CompletableFuture<Void> deleteUpdatePacket(Name username, UUID channelId) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-        Path directory = updatesDirectory.resolve(nameToFilename(username));
-        ioThreads.execute(r(() -> {
-            Path file = directory.resolve(channelId.toString());
-            Files.delete(file);
-            future.complete(null);
-        }));
-
-        return future;
+        return updatesTaskQueue.runSuspend(username, task -> {
+            Path directory = updatesDirectory.resolve(nameToFilename(username));
+            ioThreads.execute(r(() -> {
+                Path file = directory.resolve(channelId.toString());
+                Files.delete(file);
+                task.complete(null);
+            }));
+        });
     }
 
     private static void newLine(RandomAccessFile raf) throws IOException {
         raf.write("\n".getBytes());
     }
 
-    private final Map<UUID, TaskQueue> queueByChannel = new HashMap<>();
-    private final TaskQueue queueByChannelTaskQueue = new TaskQueue();
+    private final MultiTaskQueue<UUID> messagesTaskQueue = new MultiTaskQueue<>();
 
     public CompletableFuture<Void> saveMessage(UUID channel, Message message) {
-        CompletableFuture<Void> saveFuture = new CompletableFuture<>();
-
-        getQueueForChannel(channel, taskQueue -> taskQueue.runSuspend(() -> {
-            CompletableFuture<Void> future = new CompletableFuture<>();
+        return messagesTaskQueue.runSuspend(channel, task -> {
             Path directory = messagesDirectory.resolve(channel.toString());
             Path messagesPath = directory.resolve("messages.txt");
             Path indexPath = directory.resolve("index");
@@ -147,27 +146,10 @@ public class Database {
                 buffer.putLong(length);
 
                 Files.write(indexPath, buffer.array(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                queueByChannelTaskQueue.run(() -> {
-                    future.complete(null);
-                    saveFuture.complete(null);
-                });
+
+                logger.info(String.format("Saved message for channel %s: %s", channel, message));
+                task.complete(null);
             }));
-
-            return future;
-        }));
-
-        return saveFuture;
-    }
-
-    private void getQueueForChannel(UUID channel, Consumer<TaskQueue> processQueue) {
-        queueByChannelTaskQueue.run(() -> {
-            TaskQueue taskQueue = queueByChannel.get(channel);
-            if (taskQueue == null) {
-                taskQueue = new TaskQueue();
-                queueByChannel.put(channel, taskQueue);
-            }
-
-            processQueue.accept(taskQueue);
         });
     }
 
@@ -180,9 +162,7 @@ public class Database {
     public Observable<Message> getMessages(UUID channel, int count) {
         Observable<Message> messages = new Observable<>();
 
-        getQueueForChannel(channel, taskQueue -> taskQueue.runSuspend(() -> {
-            CompletableFuture<Void> future = new CompletableFuture<>();
-
+        messagesTaskQueue.runSuspend(channel, task -> {
             Path directory = messagesDirectory.resolve(channel.toString());
             Path messagesPath = directory.resolve("messages.txt");
             Path indexPath = directory.resolve("index");
@@ -218,15 +198,11 @@ public class Database {
                     }
                 } catch (FileNotFoundException ignore) {
                 }
-                logger.info(String.format("Read %d messages for channel: %s", messagesRead, channel));
-                queueByChannelTaskQueue.run(() -> {
-                    future.complete(null);
-                    messages.complete();
-                });
+                logger.info(String.format("Read %d messages for channel %s", messagesRead, channel));
+                task.complete(null);
+                messages.complete();
             }));
-
-            return future;
-        }));
+        });
 
         return messages;
     }

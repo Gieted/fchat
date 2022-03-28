@@ -64,45 +64,36 @@ public class Connection {
     }
 
     public CompletableFuture<Void> send(Packet packet) {
-        CompletableFuture<Void> sendFuture = new CompletableFuture<>();
-        taskQueue.runSuspend(() -> {
-            CompletableFuture<Void> future = new CompletableFuture<>();
+        return taskQueue.runSuspend(task -> workerThreads.execute(r(() -> {
+            byte[] packetBytes;
+            if (packet != null) {
+                packetBytes = packetEncoder.toBytes(packet);
+            } else {
+                packetBytes = null;
+            }
 
-            workerThreads.execute(r(() -> {
-                byte[] packetBytes;
-                if (packet != null) {
-                    packetBytes = packetEncoder.toBytes(packet);
-                } else {
-                    packetBytes = null;
-                }
+            ioThreads.execute(r(() -> {
+                connect();
 
-                ioThreads.execute(r(() -> {
-                    connect();
+                try {
+                    OutputStream outputStream = socket.getOutputStream();
 
-                    try {
-                        OutputStream outputStream = socket.getOutputStream();
-
-                        if (packet == null) {
-                            outputStream.write(new byte[]{0, 0, 0, 0});
-                            logger.info("Sent packet: null");
-                            future.complete(null);
-                            return;
-                        }
-
-                        outputStream.write(intToBytes(packetBytes.length));
-                        outputStream.write(packetBytes);
-                        logger.info("Sent packet: " + packet);
-                        future.complete(null);
-                    } catch (IOException e) {
-                        future.completeExceptionally(new DisconnectedException());
+                    if (packet == null) {
+                        outputStream.write(new byte[]{0, 0, 0, 0});
+                        logger.info("Sent packet: null");
+                        task.complete(null);
+                        return;
                     }
-                }));
+
+                    outputStream.write(intToBytes(packetBytes.length));
+                    outputStream.write(packetBytes);
+                    logger.info("Sent packet: " + packet);
+                    task.complete(null);
+                } catch (IOException e) {
+                    task.completeExceptionally(new DisconnectedException());
+                }
             }));
-
-            return future;
-        });
-
-        return sendFuture;
+        })));
     }
 
     public CompletableFuture<Packet> read() {
