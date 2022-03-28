@@ -74,4 +74,10 @@ public abstract class ExceptionHandler {
         printError("Unknown command: " + command);
         System.exit(11);
     }
+
+    public static void onServerDisconnected() {
+        checkDevMode();
+        printError("Server unexpectedly disconnected");
+        System.exit(12);
+    }
 }

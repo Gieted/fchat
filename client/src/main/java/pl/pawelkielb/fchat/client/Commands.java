@@ -1,8 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
-import pl.pawelkielb.fchat.Connection;
-import pl.pawelkielb.fchat.Logger;
-import pl.pawelkielb.fchat.PacketEncoder;
+import pl.pawelkielb.fchat.*;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;
@@ -19,6 +17,16 @@ import java.util.concurrent.Executor;
 public abstract class Commands {
     private static void printMessage(Console console, Message message) {
         console.println(String.format("%s: %s", message.author(), message.content()));
+    }
+
+    private static void doNetwork(Exceptions.Runnable_WithExceptions<IOException> runnable) {
+        try {
+            runnable.run();
+        } catch (IOException e) {
+            ExceptionHandler.onNetworkException();
+        } catch (DisconnectedException e) {
+            ExceptionHandler.onServerDisconnected();
+        }
     }
 
     public static void execute(String command,
@@ -78,11 +86,7 @@ public abstract class Commands {
 
                 if (args.size() == 1) {
                     Name recipient = Name.of(args.get(0));
-                    try {
-                        client.createPrivateChannel(recipient);
-                    } catch (IOException e) {
-                        ExceptionHandler.onNetworkException();
-                    }
+                    doNetwork(() -> client.createPrivateChannel(recipient));
                 } else {
                     var members = args
                             .subList(1, args.size())
@@ -90,11 +94,7 @@ public abstract class Commands {
                             .map(Name::of)
                             .toList();
 
-                    try {
-                        client.createGroupChannel(Name.of(args.get(0)), members);
-                    } catch (IOException e) {
-                        ExceptionHandler.onNetworkException();
-                    }
+                    doNetwork(() -> client.createGroupChannel(Name.of(args.get(0)), members));
                 }
             }
 
@@ -110,11 +110,7 @@ public abstract class Commands {
                 }
 
                 String message = String.join(" ", args);
-                try {
-                    client.sendMessage(channelConfig.id(), new Message(clientConfig.username(), message));
-                } catch (IOException e) {
-                    ExceptionHandler.onNetworkException();
-                }
+                doNetwork(() -> client.sendMessage(channelConfig.id(), new Message(clientConfig.username(), message)));
             }
 
             case "read" -> {
@@ -132,20 +128,12 @@ public abstract class Commands {
                     }
                 }
 
-                try {
-                    client.readMessages(channelConfig.id(), messageCount).forEach(message -> printMessage(console, message));
-                } catch (IOException e) {
-                    ExceptionHandler.onNetworkException();
-                }
+                final int messageCountFinal = messageCount;
+                doNetwork(() -> client.readMessages(channelConfig.id(), messageCountFinal)
+                        .forEach(message -> printMessage(console, message)));
             }
 
-            case "sync" -> {
-                try {
-                    client.sync();
-                } catch (IOException e) {
-                    ExceptionHandler.onNetworkException();
-                }
-            }
+            case "sync" -> doNetwork(client::sync);
 
             default -> ExceptionHandler.onUnknownCommand(command);
         }

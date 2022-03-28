@@ -8,7 +8,6 @@ import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
@@ -41,7 +40,7 @@ public class Client {
         }
     }
 
-    public void sync() throws IOException {
+    public void sync() {
         login();
 
         connection.send(new RequestUpdatesPacket());
@@ -56,11 +55,11 @@ public class Client {
         } while (packet != null);
     }
 
-    public void createPrivateChannel(Name recipient) throws IOException {
+    public void createPrivateChannel(Name recipient) {
         createGroupChannel(recipient, List.of(recipient));
     }
 
-    public void createGroupChannel(Name name, List<Name> members) throws IOException {
+    public void createGroupChannel(Name name, List<Name> members) {
         login();
 
         UUID channelId = UUID.randomUUID();
@@ -69,7 +68,7 @@ public class Client {
         sync();
     }
 
-    public void sendMessage(UUID channel, Message message) throws IOException {
+    public void sendMessage(UUID channel, Message message) {
         login();
 
         SendMessagePacket sendMessagePacket = new SendMessagePacket(
@@ -80,7 +79,7 @@ public class Client {
         connection.send(sendMessagePacket);
     }
 
-    public Stream<Message> readMessages(UUID channel, int count) throws IOException {
+    public Stream<Message> readMessages(UUID channel, int count) {
         login();
 
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
