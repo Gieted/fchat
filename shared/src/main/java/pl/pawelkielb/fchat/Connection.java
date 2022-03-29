@@ -79,7 +79,7 @@ public class Connection {
                     OutputStream outputStream = socket.getOutputStream();
 
                     if (packet == null) {
-                        outputStream.write(new byte[]{0, 0, 0, 0});
+                        outputStream.write(intToBytes(0));
                         logger.info("Sent packet: null");
                         task.complete(null);
                         return;
@@ -126,6 +126,35 @@ public class Connection {
                 future.complete(packet);
             }));
         }));
+
+        return future;
+    }
+
+    public CompletableFuture<Void> sendBytes(byte[] bytes) {
+        return taskQueue.runSuspend(task -> ioThreads.execute(() -> {
+            try {
+                OutputStream output = socket.getOutputStream();
+                output.write(intToBytes(bytes.length));
+                output.write(bytes);
+                task.complete(null);
+            } catch (IOException e) {
+                task.completeExceptionally(e);
+            }
+        }));
+    }
+
+    public CompletableFuture<byte[]> readBytes() {
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
+        ioThreads.execute(() -> {
+            try {
+                InputStream input = socket.getInputStream();
+                int arraySize = intFromBytes(input.readNBytes(4));
+                byte[] bytes = input.readNBytes(arraySize);
+                future.complete(bytes);
+            } catch (IOException e) {
+                future.completeExceptionally(e);
+            }
+        });
 
         return future;
     }
