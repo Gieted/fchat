@@ -8,10 +8,15 @@ import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
 
 public class Client {
     private final Database database;
@@ -132,5 +137,59 @@ public class Client {
         };
 
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false);
+    }
+
+    public void sendFile(Path path, Consumer<Double> progressConsumer) throws IOException {
+        if (!Files.isRegularFile(path)) {
+            throw new NotAFileException();
+        }
+
+        long totalSize = Files.size(path);
+        long bytesSent = 0;
+
+        connection.send(new SendFilePacket(path.getFileName().toString()));
+
+        try (InputStream inputStream = Files.newInputStream(path)) {
+            byte[] nextBytes;
+            do {
+                nextBytes = inputStream.readNBytes(Integer.MAX_VALUE);
+                connection.sendBytes(nextBytes).get();
+                bytesSent += nextBytes.length;
+                progressConsumer.accept(((double) bytesSent) / totalSize);
+            } while (nextBytes.length != 0);
+        } catch (ExecutionException | InterruptedException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    public void downloadFile(String name, Path destinationDirectory) throws IOException {
+        if (!Files.isDirectory(destinationDirectory)) {
+            throw new NotDirectoryException(destinationDirectory.toString());
+        }
+
+        connection.send(new RequestFilePacket(name));
+
+        String filename = name;
+        Path filePath;
+        while (true) {
+            filePath = destinationDirectory.resolve(filename);
+            try (var output = Files.newOutputStream(filePath)) {
+                byte[] nextBytes = connection.readBytes().get();
+
+                if (nextBytes.length == 0) {
+                    throw new NoSuchFileException(name);
+                }
+                
+                do {
+                    nextBytes = connection.readBytes().get();
+                    output.write(nextBytes);
+                } while (nextBytes.length != 0);
+                break;
+            } catch (FileAlreadyExistsException e) {
+                filename = StringUtils.increment(filename);
+            } catch (ExecutionException | InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }
     }
 }

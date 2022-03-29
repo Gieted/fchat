@@ -32,6 +32,10 @@ public class PacketEncoder {
             packetBytes = toBytes(channelUpdatedPacket);
         } else if (packet instanceof RequestUpdatesPacket) {
             packetBytes = emptyPacket("RequestUpdates");
+        } else if (packet instanceof SendFilePacket sendFilePacket) {
+            packetBytes = toBytes(sendFilePacket);
+        } else if (packet instanceof RequestFilePacket requestFilePacket) {
+            packetBytes = toBytes(requestFilePacket);
         } else {
             throw new IllegalArgumentException("This packet type is not supported");
         }
@@ -110,6 +114,24 @@ public class PacketEncoder {
         return packetString.getBytes();
     }
 
+    public byte[] toBytes(SendFilePacket packet) {
+        Properties properties = new Properties();
+        properties.setProperty("type", "SendFile");
+        properties.setProperty("name", packet.name());
+        String packetString = propertiesToString(properties);
+
+        return packetString.getBytes();
+    }
+
+    public byte[] toBytes(RequestFilePacket packet) {
+        Properties properties = new Properties();
+        properties.setProperty("type", "RequestFile");
+        properties.setProperty("name", packet.name());
+        String packetString = propertiesToString(properties);
+
+        return packetString.getBytes();
+    }
+
     public byte[] emptyPacket(String type) {
         Properties properties = new Properties();
         properties.setProperty("type", type);
@@ -175,6 +197,18 @@ public class PacketEncoder {
             }
 
             case "RequestUpdates" -> new RequestUpdatesPacket();
+
+            case "SendFile" -> {
+                String name = properties.getProperty("name");
+
+                yield new SendFilePacket(name);
+            }
+
+            case "RequestFile" -> {
+                String name = properties.getProperty("name");
+
+                yield new RequestFilePacket(name);
+            }
 
             default -> throw new PacketDecodeException("Unknown packet type");
         };
