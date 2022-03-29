@@ -131,7 +131,9 @@ public class Connection {
     }
 
     public CompletableFuture<Void> sendBytes(byte[] bytes) {
-        return taskQueue.runSuspend(task -> ioThreads.execute(() -> {
+        return taskQueue.runSuspend(task -> ioThreads.execute(r(() -> {
+            connect();
+
             try {
                 OutputStream output = socket.getOutputStream();
                 output.write(intToBytes(bytes.length));
@@ -141,12 +143,14 @@ public class Connection {
             } catch (IOException e) {
                 task.completeExceptionally(e);
             }
-        }));
+        })));
     }
 
     public CompletableFuture<byte[]> readBytes() {
         CompletableFuture<byte[]> future = new CompletableFuture<>();
-        ioThreads.execute(() -> {
+        ioThreads.execute(r(() -> {
+            connect();
+            
             try {
                 InputStream input = socket.getInputStream();
                 int arraySize = intFromBytes(input.readNBytes(4));
@@ -156,7 +160,7 @@ public class Connection {
             } catch (IOException e) {
                 future.completeExceptionally(e);
             }
-        });
+        }));
 
         return future;
     }
