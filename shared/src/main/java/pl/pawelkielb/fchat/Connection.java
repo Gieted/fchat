@@ -136,6 +136,7 @@ public class Connection {
                 OutputStream output = socket.getOutputStream();
                 output.write(intToBytes(bytes.length));
                 output.write(bytes);
+                logger.info(String.format("Sent %d bytes", bytes.length));
                 task.complete(null);
             } catch (IOException e) {
                 task.completeExceptionally(e);
@@ -150,6 +151,7 @@ public class Connection {
                 InputStream input = socket.getInputStream();
                 int arraySize = intFromBytes(input.readNBytes(4));
                 byte[] bytes = input.readNBytes(arraySize);
+                logger.info(String.format("Read %d bytes", arraySize));
                 future.complete(bytes);
             } catch (IOException e) {
                 future.completeExceptionally(e);
