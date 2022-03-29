@@ -118,6 +118,7 @@ public class PacketEncoder {
         Properties properties = new Properties();
         properties.setProperty("type", "SendFile");
         properties.setProperty("name", packet.name());
+        properties.setProperty("size", String.valueOf(packet.size()));
         String packetString = propertiesToString(properties);
 
         return packetString.getBytes();
@@ -200,8 +201,9 @@ public class PacketEncoder {
 
             case "SendFile" -> {
                 String name = properties.getProperty("name");
+                long size = Long.parseLong(properties.getProperty("size"));
 
-                yield new SendFilePacket(name);
+                yield new SendFilePacket(name, size);
             }
 
             case "RequestFile" -> {

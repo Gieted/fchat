@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import static pl.pawelkielb.fchat.Exceptions.c;
 import static pl.pawelkielb.fchat.Exceptions.r;
 
 
@@ -18,9 +19,9 @@ public class Main {
     public static void nextPacket(Connection connection,
                                   ClientHandler clientHandler) {
 
-        connection.read().thenAccept(packet ->
+        connection.read().thenAccept(c(packet ->
                 clientHandler.handlePacket(packet).thenRun(() ->
-                        nextPacket(connection, clientHandler)));
+                        nextPacket(connection, clientHandler))));
     }
 
     public static void startServer(int port) throws IOException {

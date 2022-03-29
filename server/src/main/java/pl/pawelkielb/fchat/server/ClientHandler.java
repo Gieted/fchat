@@ -1,10 +1,10 @@
 package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.Connection;
-import pl.pawelkielb.fchat.ProtocolException;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
 
+import java.net.ProtocolException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -19,13 +19,13 @@ public class ClientHandler {
         this.connection = connection;
     }
 
-    private void checkLoggedIn() {
+    private void checkLoggedIn() throws ProtocolException {
         if (username == null) {
             throw new ProtocolException();
         }
     }
 
-    public CompletableFuture<Void> handlePacket(Packet packet) {
+    public CompletableFuture<Void> handlePacket(Packet packet) throws ProtocolException {
         CompletableFuture<Void> handlePacketFuture = new CompletableFuture<>();
 
         if (packet instanceof LoginPacket loginPacket) {

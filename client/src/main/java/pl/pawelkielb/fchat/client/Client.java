@@ -10,6 +10,7 @@ import pl.pawelkielb.fchat.packets.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ProtocolException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -147,7 +148,7 @@ public class Client {
         long totalSize = Files.size(path);
         long bytesSent = 0;
 
-        connection.send(new SendFilePacket(path.getFileName().toString()));
+        connection.send(new SendFilePacket(path.getFileName().toString(), Files.size(path)));
 
         try (InputStream inputStream = Files.newInputStream(path)) {
             byte[] nextBytes;
@@ -162,27 +163,39 @@ public class Client {
         }
     }
 
-    public void downloadFile(String name, Path destinationDirectory) throws IOException {
+    public void downloadFile(String name, Path destinationDirectory, Consumer<Double> progressConsumer) throws IOException {
         if (!Files.isDirectory(destinationDirectory)) {
             throw new NotDirectoryException(destinationDirectory.toString());
         }
 
         connection.send(new RequestFilePacket(name));
 
+        Packet packet = readSync();
+
+        if (packet == null) {
+            throw new NoSuchFileException(name);
+        }
+
+        long fileSize;
+        if (packet instanceof SendFilePacket sendFilePacket) {
+            fileSize = sendFilePacket.size();
+        } else {
+            throw new ProtocolException();
+        }
+
+        long bytesWritten = 0;
+
         String filename = name;
         Path filePath;
         while (true) {
             filePath = destinationDirectory.resolve(filename);
             try (var output = Files.newOutputStream(filePath)) {
-                byte[] nextBytes = connection.readBytes().get();
+                byte[] nextBytes;
 
-                if (nextBytes.length == 0) {
-                    throw new NoSuchFileException(name);
-                }
-                
                 do {
                     nextBytes = connection.readBytes().get();
                     output.write(nextBytes);
+                    progressConsumer.accept(((double) bytesWritten) / fileSize);
                 } while (nextBytes.length != 0);
                 break;
             } catch (FileAlreadyExistsException e) {

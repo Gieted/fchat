@@ -1,4 +1,4 @@
 package pl.pawelkielb.fchat.packets;
 
-public record SendFilePacket(String name) implements Packet {
+public record SendFilePacket(String name, long size) implements Packet {
 }
