@@ -117,6 +117,7 @@ public class PacketEncoder {
     public byte[] toBytes(SendFilePacket packet) {
         Properties properties = new Properties();
         properties.setProperty("type", "SendFile");
+        properties.setProperty("channel", packet.channel().toString());
         properties.setProperty("name", packet.name());
         properties.setProperty("size", String.valueOf(packet.size()));
         String packetString = propertiesToString(properties);
@@ -200,10 +201,11 @@ public class PacketEncoder {
             case "RequestUpdates" -> new RequestUpdatesPacket();
 
             case "SendFile" -> {
+                UUID channel = UUID.fromString(properties.getProperty("channel"));
                 String name = properties.getProperty("name");
                 long size = Long.parseLong(properties.getProperty("size"));
 
-                yield new SendFilePacket(name, size);
+                yield new SendFilePacket(channel, name, size);
             }
 
             case "RequestFile" -> {

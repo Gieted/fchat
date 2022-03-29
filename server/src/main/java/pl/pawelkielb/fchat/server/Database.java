@@ -3,6 +3,7 @@ package pl.pawelkielb.fchat.server;
 import pl.pawelkielb.fchat.Logger;
 import pl.pawelkielb.fchat.Observable;
 import pl.pawelkielb.fchat.PacketEncoder;
+import pl.pawelkielb.fchat.StringUtils;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.ChannelUpdatedPacket;
@@ -11,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -19,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+import static pl.pawelkielb.fchat.Exceptions.c;
 import static pl.pawelkielb.fchat.Exceptions.r;
 
 public class Database {
@@ -203,5 +206,29 @@ public class Database {
         });
 
         return messages;
+    }
+
+    private final MultiTaskQueue<UUID> filesTaskQueue = new MultiTaskQueue<>();
+
+    public CompletableFuture<Void> saveFile(UUID channel, String name, Observable<byte[]> bytes) {
+        Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
+
+        return filesTaskQueue.runSuspend(channel, task -> ioThreads.execute(r(() -> {
+            Files.createDirectories(filesDirectory);
+            String fileName = name;
+            while (true) {
+                Path filePath = filesDirectory.resolve(name);
+                try {
+                    var output = Files.newOutputStream(filePath);
+                    bytes.subscribe(c(output::write), r(() -> {
+                        output.close();
+                        task.complete(null);
+                    }));
+                    break;
+                } catch (FileAlreadyExistsException e) {
+                    fileName = StringUtils.incrementFileName(fileName);
+                }
+            }
+        })));
     }
 }

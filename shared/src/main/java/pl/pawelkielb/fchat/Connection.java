@@ -155,7 +155,7 @@ public class Connection {
                 InputStream input = socket.getInputStream();
                 int arraySize = intFromBytes(input.readNBytes(4));
                 byte[] bytes = input.readNBytes(arraySize);
-                logger.info(String.format("Read %d bytes", arraySize));
+                logger.info(String.format("Recieved %d bytes", arraySize));
                 future.complete(bytes);
             } catch (IOException e) {
                 future.completeExceptionally(e);

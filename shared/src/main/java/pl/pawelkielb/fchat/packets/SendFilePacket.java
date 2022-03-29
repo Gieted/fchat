@@ -1,4 +1,6 @@
 package pl.pawelkielb.fchat.packets;
 
-public record SendFilePacket(String name, long size) implements Packet {
+import java.util.UUID;
+
+public record SendFilePacket(UUID channel, String name, long size) implements Packet {
 }

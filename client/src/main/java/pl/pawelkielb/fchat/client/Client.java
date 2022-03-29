@@ -2,6 +2,7 @@ package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.DisconnectedException;
+import pl.pawelkielb.fchat.StringUtils;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
 import pl.pawelkielb.fchat.data.Message;
@@ -140,7 +141,7 @@ public class Client {
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false);
     }
 
-    public void sendFile(Path path, Consumer<Double> progressConsumer) throws IOException {
+    public void sendFile(UUID channel, Path path, Consumer<Double> progressConsumer) throws IOException {
         if (!Files.isRegularFile(path)) {
             throw new NotAFileException();
         }
@@ -148,7 +149,7 @@ public class Client {
         long totalSize = Files.size(path);
         long bytesSent = 0;
 
-        connection.send(new SendFilePacket(path.getFileName().toString(), Files.size(path)));
+        connection.send(new SendFilePacket(channel, path.getFileName().toString(), Files.size(path)));
 
         try (InputStream inputStream = Files.newInputStream(path)) {
             byte[] nextBytes;
@@ -199,7 +200,7 @@ public class Client {
                 } while (nextBytes.length != 0);
                 break;
             } catch (FileAlreadyExistsException e) {
-                filename = StringUtils.increment(filename);
+                filename = StringUtils.incrementFileName(filename);
             } catch (ExecutionException | InterruptedException e) {
                 throw new AssertionError(e);
             }

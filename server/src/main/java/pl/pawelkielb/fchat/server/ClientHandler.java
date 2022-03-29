@@ -1,6 +1,7 @@
 package pl.pawelkielb.fchat.server;
 
 import pl.pawelkielb.fchat.Connection;
+import pl.pawelkielb.fchat.Observable;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
 
@@ -23,6 +24,17 @@ public class ClientHandler {
         if (username == null) {
             throw new ProtocolException();
         }
+    }
+
+    private void readNextBytes(Observable<byte[]> fileBytes) {
+        connection.readBytes().thenAccept(nextBytes -> {
+            if (nextBytes.length != 0) {
+                fileBytes.onNext(nextBytes);
+                readNextBytes(fileBytes);
+            } else {
+                fileBytes.complete();
+            }
+        });
     }
 
     public CompletableFuture<Void> handlePacket(Packet packet) throws ProtocolException {
@@ -66,6 +78,11 @@ public class ClientHandler {
                 connection.send(null);
                 handlePacketFuture.complete(null);
             });
+        } else if (packet instanceof SendFilePacket sendFilePacket) {
+            Observable<byte[]> fileBytes = new Observable<>();
+            database.saveFile(sendFilePacket.channel(), sendFilePacket.name(), fileBytes);
+            readNextBytes(fileBytes);
+            fileBytes.subscribe(null, () -> handlePacketFuture.complete(null));
         } else {
             handlePacketFuture.complete(null);
         }

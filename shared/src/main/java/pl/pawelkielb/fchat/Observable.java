@@ -10,7 +10,9 @@ public class Observable<T> {
     private final List<Consumer<Exception>> exceptionListener = new ArrayList<>();
 
     public void subscribe(Consumer<T> observer, Runnable onComplete, Consumer<Exception> exceptionHandler) {
-        observers.add(observer);
+        if (observer != null) {
+            observers.add(observer);
+        }
         if (onComplete != null) {
             completionListeners.add(onComplete);
         }

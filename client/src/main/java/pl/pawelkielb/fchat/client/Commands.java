@@ -135,6 +135,16 @@ public abstract class Commands {
 
             case "sync" -> doNetwork(client::sync);
 
+            case "sendfile" -> {
+                if (channelConfig == null) {
+                    ExceptionHandler.onCommandNotUsedInChannelDirectory();
+                    return;
+                }
+
+                Path path = Paths.get(args.get(0));
+                doNetwork(() -> client.sendFile(channelConfig.id(), path, System.out::println));
+            }
+
             default -> ExceptionHandler.onUnknownCommand(command);
         }
     }
