@@ -80,9 +80,8 @@ public class ClientHandler {
             });
         } else if (packet instanceof SendFilePacket sendFilePacket) {
             Observable<byte[]> fileBytes = new Observable<>();
-            database.saveFile(sendFilePacket.channel(), sendFilePacket.name(), fileBytes);
+            database.saveFile(sendFilePacket.channel(), sendFilePacket.name(), fileBytes).thenRun(() -> handlePacketFuture.complete(null));
             readNextBytes(fileBytes);
-            fileBytes.subscribe(null, () -> handlePacketFuture.complete(null));
         } else {
             handlePacketFuture.complete(null);
         }

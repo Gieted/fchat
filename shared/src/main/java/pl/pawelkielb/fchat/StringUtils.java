@@ -19,13 +19,13 @@ public abstract class StringUtils {
 
     public static String incrementFileName(String string) {
         List<String> stringSplit = Arrays.asList(string.split("\\."));
-        if (stringSplit.size() == 0) {
+        if (stringSplit.size() == 1) {
             return increment(string);
         }
 
         String fileName = String.join(".", stringSplit.subList(0, stringSplit.size() - 1));
         String extension = stringSplit.get(stringSplit.size() - 1);
 
-        return increment(fileName) + extension;
+        return increment(fileName) + "." + extension;
     }
 }

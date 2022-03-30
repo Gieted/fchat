@@ -20,4 +20,30 @@ class StringUtilsTest : WordSpec({
             StringUtils.increment("name (325)") shouldBe "name (326)"
         }
     }
+
+    "incrementFileName()" should {
+        "append '(1)' when it's first increment" {
+            StringUtils.incrementFileName("name.ext") shouldBe "name (1).ext"
+        }
+
+        "return '(n+1)' when '(n)' is passed" {
+            StringUtils.incrementFileName("name (5).ext") shouldBe "name (6).ext"
+        }
+
+        "increment only last '(n)'" {
+            StringUtils.incrementFileName("name (5)(1).ext") shouldBe "name (5)(2).ext"
+        }
+
+        "work for long numbers" {
+            StringUtils.incrementFileName("name (325).ext") shouldBe "name (326).ext"
+        }
+
+        "work when no extension is provided" {
+            StringUtils.incrementFileName("name") shouldBe "name (1)"
+        }
+
+        "work with multiple dots" {
+            StringUtils.incrementFileName("name.ext.ext2") shouldBe "name.ext (1).ext2"
+        }
+    }
 })

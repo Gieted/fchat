@@ -217,9 +217,9 @@ public class Database {
             Files.createDirectories(filesDirectory);
             String fileName = name;
             while (true) {
-                Path filePath = filesDirectory.resolve(name);
+                Path filePath = filesDirectory.resolve(fileName);
                 try {
-                    var output = Files.newOutputStream(filePath);
+                    var output = Files.newOutputStream(filePath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
                     bytes.subscribe(c(output::write), r(() -> {
                         output.close();
                         task.complete(null);
