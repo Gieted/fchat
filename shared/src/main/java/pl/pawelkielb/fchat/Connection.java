@@ -9,7 +9,9 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.locks.ReentrantLock;
 
+import static pl.pawelkielb.fchat.Exceptions.c;
 import static pl.pawelkielb.fchat.Exceptions.r;
 
 public class Connection {
@@ -20,6 +22,8 @@ public class Connection {
     private final Logger logger;
     private String address;
     private int port;
+    private Observable<Void> applicationExitEvent;
+    private ReentrantLock readLock = new ReentrantLock();
 
     private final TaskQueue taskQueue = new TaskQueue();
 
@@ -28,12 +32,14 @@ public class Connection {
                       int port,
                       Executor workerThreads,
                       Executor ioThreads,
-                      Logger logger) {
+                      Logger logger,
+                      Observable<Void> applicationExitEvent) {
 
 
         this(packetEncoder, null, workerThreads, ioThreads, logger);
         this.address = address;
         this.port = port;
+        this.applicationExitEvent = applicationExitEvent;
     }
 
     public Connection(PacketEncoder packetEncoder,
@@ -60,44 +66,29 @@ public class Connection {
     private void connect() throws IOException {
         if (socket == null) {
             socket = new Socket(address, port);
+            applicationExitEvent.subscribe(c(() -> taskQueue.run(r(socket::close))));
         }
     }
 
     public CompletableFuture<Void> send(Packet packet) {
-        return taskQueue.runSuspend(task -> workerThreads.execute(r(() -> {
-            byte[] packetBytes;
-            if (packet != null) {
-                packetBytes = packetEncoder.toBytes(packet);
+        return taskQueue.runSuspend(task -> {
+            if (packet == null) {
+                sendBytesInternal(null).thenRun(() -> task.complete(null));
             } else {
-                packetBytes = null;
+                workerThreads.execute(() -> {
+                    byte[] packetBytes = packetEncoder.toBytes(packet);
+                    sendBytesInternal(packetBytes).thenRun(() -> task.complete(null));
+                });
             }
-
-            ioThreads.execute(r(() -> {
-                connect();
-
-                try {
-                    OutputStream outputStream = socket.getOutputStream();
-
-                    if (packet == null) {
-                        outputStream.write(intToBytes(0));
-                        logger.info("Sent packet: null");
-                        task.complete(null);
-                        return;
-                    }
-
-                    outputStream.write(intToBytes(packetBytes.length));
-                    outputStream.write(packetBytes);
-                    logger.info("Sent packet: " + packet);
-                    task.complete(null);
-                } catch (IOException e) {
-                    task.completeExceptionally(new DisconnectedException());
-                }
-            }));
-        })));
+        });
     }
 
     public CompletableFuture<Packet> read() {
         CompletableFuture<Packet> future = new CompletableFuture<>();
+        if (!readLock.tryLock()) {
+            throw new ConcurrentReadException();
+        }
+
         ioThreads.execute(r(() -> {
             connect();
 
@@ -105,17 +96,27 @@ public class Connection {
             try {
                 InputStream input = socket.getInputStream();
                 int packetSize;
-                packetSize = intFromBytes(input.readNBytes(4));
+                byte[] packetSizeBytes = input.readNBytes(4);
+
+                if (packetSizeBytes.length < 4) {
+                    readLock = new ReentrantLock();
+                    future.completeExceptionally(new DisconnectedException());
+                    return;
+                }
+
+                packetSize = intFromBytes(packetSizeBytes);
 
                 // null packet
                 if (packetSize == 0) {
                     logger.info("Recieved packet: null");
+                    readLock = new ReentrantLock();
                     future.complete(null);
                     return;
                 }
 
                 packetBytes = input.readNBytes(packetSize);
             } catch (IOException e) {
+                readLock = new ReentrantLock();
                 future.completeExceptionally(new DisconnectedException());
                 return;
             }
@@ -123,6 +124,7 @@ public class Connection {
             workerThreads.execute(r(() -> {
                 Packet packet = packetEncoder.decode(packetBytes);
                 logger.info("Recieved packet: " + packet);
+                readLock = new ReentrantLock();
                 future.complete(packet);
             }));
         }));
@@ -130,38 +132,54 @@ public class Connection {
         return future;
     }
 
-    public CompletableFuture<Void> sendBytes(byte[] bytes) {
-        return taskQueue.runSuspend(task -> ioThreads.execute(r(() -> {
+    private CompletableFuture<Void> sendBytesInternal(byte[] bytes) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
+
+        ioThreads.execute(r(() -> {
             connect();
 
             try {
                 OutputStream output = socket.getOutputStream();
                 output.write(intToBytes(bytes.length));
                 output.write(bytes);
-                logger.info(String.format("Sent %d bytes", bytes.length));
-                task.complete(null);
+                future.complete(null);
             } catch (IOException e) {
-                task.completeExceptionally(e);
-            }
-        })));
-    }
-
-    public CompletableFuture<byte[]> readBytes() {
-        CompletableFuture<byte[]> future = new CompletableFuture<>();
-        ioThreads.execute(r(() -> {
-            connect();
-            
-            try {
-                InputStream input = socket.getInputStream();
-                int arraySize = intFromBytes(input.readNBytes(4));
-                byte[] bytes = input.readNBytes(arraySize);
-                logger.info(String.format("Recieved %d bytes", arraySize));
-                future.complete(bytes);
-            } catch (IOException e) {
-                future.completeExceptionally(e);
+                future.completeExceptionally(new DisconnectedException());
             }
         }));
 
         return future;
+    }
+
+    private CompletableFuture<byte[]> readBytesInternal() {
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
+        ioThreads.execute(r(() -> {
+            connect();
+
+            try {
+                InputStream input = socket.getInputStream();
+                int arraySize = intFromBytes(input.readNBytes(4));
+                byte[] bytes = input.readNBytes(arraySize);
+                future.complete(bytes);
+            } catch (IOException e) {
+                future.completeExceptionally(new DisconnectedException());
+            }
+        }));
+
+        return future;
+    }
+
+    public CompletableFuture<Void> sendBytes(byte[] bytes) {
+        return taskQueue.runSuspend(task -> sendBytesInternal(bytes).thenRun(() -> {
+            logger.info(String.format("Sent %d bytes", bytes.length));
+            task.complete(null);
+        }));
+    }
+
+    public CompletableFuture<byte[]> readBytes() {
+        return taskQueue.runSuspend(task -> readBytesInternal().thenAccept(bytes -> {
+            logger.info(String.format("Recieved %d bytes", bytes.length));
+            task.complete(bytes);
+        }));
     }
 }

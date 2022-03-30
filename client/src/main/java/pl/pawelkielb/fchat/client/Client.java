@@ -146,8 +146,11 @@ public class Client {
             throw new NotAFileException();
         }
 
+        login();
+
         long totalSize = Files.size(path);
         long bytesSent = 0;
+
 
         connection.send(new SendFilePacket(channel, path.getFileName().toString(), Files.size(path)));
 
@@ -168,6 +171,8 @@ public class Client {
         if (!Files.isDirectory(destinationDirectory)) {
             throw new NotDirectoryException(destinationDirectory.toString());
         }
+
+        login();
 
         connection.send(new RequestFilePacket(name));
 

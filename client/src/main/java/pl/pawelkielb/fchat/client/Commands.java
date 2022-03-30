@@ -73,7 +73,8 @@ public abstract class Commands {
                 clientConfig.serverPort(),
                 executor,
                 executor,
-                logger
+                logger,
+                applicationExitEvent
         );
 
         Client client = new Client(database, connection, clientConfig);

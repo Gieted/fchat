@@ -220,7 +220,9 @@ public class Database {
                 Path filePath = filesDirectory.resolve(fileName);
                 try {
                     var output = Files.newOutputStream(filePath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+                    final String fileNameFinal = fileName;
                     bytes.subscribe(c(output::write), r(() -> {
+                        logger.info("Saved file: " + fileNameFinal);
                         output.close();
                         task.complete(null);
                     }));
