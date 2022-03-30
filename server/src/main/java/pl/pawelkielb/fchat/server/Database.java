@@ -210,10 +210,17 @@ public class Database {
 
     private final MultiTaskQueue<UUID> filesTaskQueue = new MultiTaskQueue<>();
 
-    public CompletableFuture<Void> saveFile(UUID channel, String name, Observable<byte[]> bytes) {
-        Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
+    public record SaveFileControl(Observable<Void> readyEvent, CompletableFuture<String> completion) {
+        public SaveFileControl() {
+            this(new Observable<>(), new CompletableFuture<>());
+        }
+    }
 
-        return filesTaskQueue.runSuspend(channel, task -> ioThreads.execute(r(() -> {
+    public SaveFileControl saveFile(UUID channel, String name, Observable<byte[]> bytes) {
+        Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
+        SaveFileControl saveFileControl = new SaveFileControl();
+
+        filesTaskQueue.runSuspend(channel, task -> ioThreads.execute(r(() -> {
             Files.createDirectories(filesDirectory);
             String fileName = name;
             while (true) {
@@ -221,10 +228,14 @@ public class Database {
                 try {
                     var output = Files.newOutputStream(filePath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
                     final String fileNameFinal = fileName;
-                    bytes.subscribe(c(output::write), r(() -> {
+                    saveFileControl.readyEvent.onNext(null);
+                    bytes.subscribe(c(nextBytes -> {
+                        output.write(nextBytes);
+                        saveFileControl.readyEvent.onNext(null);
+                    }), r(() -> {
                         logger.info("Saved file: " + fileNameFinal);
                         output.close();
-                        task.complete(null);
+                        task.complete(fileNameFinal);
                     }));
                     break;
                 } catch (FileAlreadyExistsException e) {
@@ -232,5 +243,7 @@ public class Database {
                 }
             }
         })));
+
+        return saveFileControl;
     }
 }

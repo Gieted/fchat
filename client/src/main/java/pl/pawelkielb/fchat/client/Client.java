@@ -34,7 +34,7 @@ public class Client {
 
     private Packet readSync() {
         try {
-            return connection.read().get();
+            return connection.readPacket().get();
         } catch (ExecutionException | InterruptedException e) {
             throw new DisconnectedException();
         }
@@ -42,7 +42,7 @@ public class Client {
 
     private void login() {
         if (!loggedIn) {
-            connection.send(new LoginPacket(clientConfig.username()));
+            connection.sendPacket(new LoginPacket(clientConfig.username()));
             loggedIn = true;
         }
     }
@@ -50,7 +50,7 @@ public class Client {
     public void sync() {
         login();
 
-        connection.send(new RequestUpdatesPacket());
+        connection.sendPacket(new RequestUpdatesPacket());
 
         Packet packet;
         do {
@@ -71,7 +71,7 @@ public class Client {
 
         UUID channelId = UUID.randomUUID();
         UpdateChannelPacket updateChannelPacket = new UpdateChannelPacket(channelId, name, members);
-        connection.send(updateChannelPacket);
+        connection.sendPacket(updateChannelPacket);
         sync();
     }
 
@@ -83,14 +83,14 @@ public class Client {
                 message
         );
 
-        connection.send(sendMessagePacket);
+        connection.sendPacket(sendMessagePacket);
     }
 
     public Stream<Message> readMessages(UUID channel, int count) {
         login();
 
         RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
-        connection.send(requestMessagesPacket);
+        connection.sendPacket(requestMessagesPacket);
 
         Iterator<Message> iterator = new Iterator<Message>() {
             boolean finished = false;
@@ -152,12 +152,15 @@ public class Client {
         long bytesSent = 0;
 
 
-        connection.send(new SendFilePacket(channel, path.getFileName().toString(), Files.size(path)));
+        connection.sendPacket(new SendFilePacket(channel, path.getFileName().toString(), Files.size(path)));
 
         try (InputStream inputStream = Files.newInputStream(path)) {
             byte[] nextBytes;
             do {
-                nextBytes = inputStream.readNBytes(Integer.MAX_VALUE);
+                //noinspection StatementWithEmptyBody
+                while (readSync() != null) {
+                }
+                nextBytes = inputStream.readNBytes(1000000);
                 connection.sendBytes(nextBytes).get();
                 bytesSent += nextBytes.length;
                 progressConsumer.accept(((double) bytesSent) / totalSize);
@@ -174,7 +177,7 @@ public class Client {
 
         login();
 
-        connection.send(new RequestFilePacket(name));
+        connection.sendPacket(new RequestFilePacket(name));
 
         Packet packet = readSync();
 

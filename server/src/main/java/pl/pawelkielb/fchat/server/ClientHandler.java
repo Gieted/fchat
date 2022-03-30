@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static pl.pawelkielb.fchat.Exceptions.c;
+
 public class ClientHandler {
     private final Database database;
     private final Connection connection;
@@ -26,17 +28,6 @@ public class ClientHandler {
         }
     }
 
-    private void readNextBytes(Observable<byte[]> fileBytes) {
-        connection.readBytes().thenAccept(nextBytes -> {
-            if (nextBytes.length != 0) {
-                fileBytes.onNext(nextBytes);
-                readNextBytes(fileBytes);
-            } else {
-                fileBytes.complete();
-            }
-        });
-    }
-
     public CompletableFuture<Void> handlePacket(Packet packet) throws ProtocolException {
         CompletableFuture<Void> handlePacketFuture = new CompletableFuture<>();
 
@@ -47,9 +38,9 @@ public class ClientHandler {
             checkLoggedIn();
 
             database.listUpdatePackets(username)
-                    .subscribe(channelUpdatedPacket -> connection.send(channelUpdatedPacket).thenRun(() ->
+                    .subscribe(channelUpdatedPacket -> connection.sendPacket(channelUpdatedPacket).thenRun(() ->
                             database.deleteUpdatePacket(username, channelUpdatedPacket.channel())), () -> {
-                        connection.send(null);
+                        connection.sendPacket(null);
                         handlePacketFuture.complete(null);
                     });
         } else if (packet instanceof UpdateChannelPacket updateChannelPacket) {
@@ -74,14 +65,24 @@ public class ClientHandler {
             handlePacketFuture.complete(null);
         } else if (packet instanceof RequestMessagesPacket requestMessagesPacket) {
             database.getMessages(requestMessagesPacket.channel(), requestMessagesPacket.count()).subscribe(message ->
-                    connection.send(new SendMessagePacket(requestMessagesPacket.channel(), message)), () -> {
-                connection.send(null);
+                    connection.sendPacket(new SendMessagePacket(requestMessagesPacket.channel(), message)), () -> {
+                connection.sendPacket(null);
                 handlePacketFuture.complete(null);
             });
         } else if (packet instanceof SendFilePacket sendFilePacket) {
             Observable<byte[]> fileBytes = new Observable<>();
-            database.saveFile(sendFilePacket.channel(), sendFilePacket.name(), fileBytes).thenRun(() -> handlePacketFuture.complete(null));
-            readNextBytes(fileBytes);
+            Database.SaveFileControl saveFileControl = database.saveFile(sendFilePacket.channel(), sendFilePacket.name(), fileBytes);
+            saveFileControl.readyEvent().subscribe(c(() -> {
+                connection.sendPacket(null);
+                connection.readBytes().thenAccept(nextBytes -> {
+                    if (nextBytes.length != 0) {
+                        fileBytes.onNext(nextBytes);
+                    } else {
+                        fileBytes.complete();
+                    }
+                });
+            }));
+            saveFileControl.completion().thenRun(() -> handlePacketFuture.complete(null));
         } else {
             handlePacketFuture.complete(null);
         }

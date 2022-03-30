@@ -19,7 +19,7 @@ public class Main {
     public static void nextPacket(Connection connection,
                                   ClientHandler clientHandler) {
 
-        connection.read().thenAccept(c(packet ->
+        connection.readPacket().thenAccept(c(packet ->
                 clientHandler.handlePacket(packet).thenRun(() ->
                         nextPacket(connection, clientHandler))));
     }

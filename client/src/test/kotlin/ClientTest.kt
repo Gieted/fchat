@@ -24,11 +24,11 @@ class ClientTest : WordSpec({
             val config = ClientConfig.defaults()
             val client = Client(database, connection, config)
 
-            every { connection.read() } returns CompletableFuture.completedFuture(null)
+            every { connection.readPacket() } returns CompletableFuture.completedFuture(null)
 
             client.sync()
             client.sync()
-            verify(exactly = 1) { connection.send(LoginPacket(config.username)) }
+            verify(exactly = 1) { connection.sendPacket(LoginPacket(config.username)) }
         }
 
         "send RequestUpdatesPacket" {
@@ -37,10 +37,10 @@ class ClientTest : WordSpec({
             val config = ClientConfig.defaults()
             val client = Client(database, connection, config)
 
-            every { connection.read() } returns CompletableFuture.completedFuture(null)
+            every { connection.readPacket() } returns CompletableFuture.completedFuture(null)
 
             client.sync()
-            verify { connection.send(RequestUpdatesPacket()) }
+            verify { connection.sendPacket(RequestUpdatesPacket()) }
         }
 
         "save every received channel to database" {
@@ -51,7 +51,7 @@ class ClientTest : WordSpec({
 
             val channelId = UUID.randomUUID()
 
-            every { connection.read() } returnsMany listOf(
+            every { connection.readPacket() } returnsMany listOf(
                 ChannelUpdatedPacket(channelId, Name.of("Coders")),
                 ChannelUpdatedPacket(channelId, Name.of("Book readers")),
                 null
@@ -73,7 +73,7 @@ class ClientTest : WordSpec({
             val config = ClientConfig.defaults()
             val client = Client(database, connection, config)
 
-            every { connection.read() } returns CompletableFuture.completedFuture(null)
+            every { connection.readPacket() } returns CompletableFuture.completedFuture(null)
 
             client.sync()
             verify(exactly = 0) {
@@ -89,13 +89,19 @@ class ClientTest : WordSpec({
             val config = ClientConfig.defaults()
             val client = Client(database, connection, config)
 
-            every { connection.read() } returns CompletableFuture.completedFuture(null)
+            every { connection.readPacket() } returns CompletableFuture.completedFuture(null)
 
             val paul = Name.of("Paul")
 
             client.createPrivateChannel(paul)
 
-            verify { connection.send(match { it is UpdateChannelPacket && it.name == paul && it.members == listOf(paul) }) }
+            verify {
+                connection.sendPacket(match {
+                    it is UpdateChannelPacket && it.name == paul && it.members == listOf(
+                        paul
+                    )
+                })
+            }
         }
 
         "throw NullPointerException when null is passed as parameter" {

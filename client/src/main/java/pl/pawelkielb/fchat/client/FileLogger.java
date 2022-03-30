@@ -33,6 +33,7 @@ public class FileLogger implements Logger {
 
         try {
             writer.write(message + "\n");
+            writer.flush();
         } catch (IOException ignore) {
         }
     }
