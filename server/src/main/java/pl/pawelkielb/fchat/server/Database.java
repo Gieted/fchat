@@ -49,13 +49,13 @@ public class Database {
         return String.valueOf(name.value().toLowerCase().hashCode());
     }
 
-    private final MultiTaskQueue<Name> updatesTaskQueue = new MultiTaskQueue<>();
+    private final FileTaskQueue<Name> updatesTaskQueue = new FileTaskQueue<>();
 
     public Observable<ChannelUpdatedPacket> listUpdatePackets(Name username) {
         Observable<ChannelUpdatedPacket> updatePackets = new Observable<>();
         Path directory = updatesDirectory.resolve(nameToFilename(username));
 
-        updatesTaskQueue.runSuspend(username, task -> ioThreads.execute(r(() -> {
+        updatesTaskQueue.runSuspendReading(username, task -> ioThreads.execute(r(() -> {
             if (!Files.exists(directory)) {
                 task.complete(null);
                 updatePackets.complete();
@@ -90,7 +90,7 @@ public class Database {
     public CompletableFuture<Void> saveUpdatePacket(Name username, ChannelUpdatedPacket updatedPacket) {
         Path directory = updatesDirectory.resolve(nameToFilename(username));
 
-        return updatesTaskQueue.runSuspend(username, task -> ioThreads.execute(r(() -> {
+        return updatesTaskQueue.runSuspendWriting(username, task -> ioThreads.execute(r(() -> {
             Files.createDirectories(directory);
             Path file = directory.resolve(updatedPacket.channel().toString());
             byte[] bytes = packetEncoder.toBytes(updatedPacket);
@@ -102,7 +102,7 @@ public class Database {
     }
 
     public CompletableFuture<Void> deleteUpdatePacket(Name username, UUID channelId) {
-        return updatesTaskQueue.runSuspend(username, task -> {
+        return updatesTaskQueue.runSuspendWriting(username, task -> {
             Path directory = updatesDirectory.resolve(nameToFilename(username));
             ioThreads.execute(r(() -> {
                 Path file = directory.resolve(channelId.toString());
@@ -116,10 +116,10 @@ public class Database {
         raf.write("\n".getBytes());
     }
 
-    private final MultiTaskQueue<UUID> messagesTaskQueue = new MultiTaskQueue<>();
+    private final FileTaskQueue<UUID> messagesTaskQueue = new FileTaskQueue<>();
 
     public CompletableFuture<Void> saveMessage(UUID channel, Message message) {
-        return messagesTaskQueue.runSuspend(channel, task -> {
+        return messagesTaskQueue.runSuspendWriting(channel, task -> {
             Path directory = messagesDirectory.resolve(channel.toString());
             Path messagesPath = directory.resolve("messages.txt");
             Path indexPath = directory.resolve("index");
@@ -163,7 +163,7 @@ public class Database {
     public Observable<Message> getMessages(UUID channel, int count) {
         Observable<Message> messages = new Observable<>();
 
-        messagesTaskQueue.runSuspend(channel, task -> {
+        messagesTaskQueue.runSuspendReading(channel, task -> {
             Path directory = messagesDirectory.resolve(channel.toString());
             Path messagesPath = directory.resolve("messages.txt");
             Path indexPath = directory.resolve("index");
@@ -208,7 +208,8 @@ public class Database {
         return messages;
     }
 
-    private final MultiTaskQueue<UUID> filesTaskQueue = new MultiTaskQueue<>();
+    private final FileTaskQueue<UUID> fileCreationTaskQueue = new FileTaskQueue<>();
+    private final FileTaskQueue<Path> fileTaskQueue = new FileTaskQueue<>();
 
     public record SaveFileControl(Observable<Void> readyEvent, CompletableFuture<String> completion) {
         public SaveFileControl() {
@@ -220,23 +221,31 @@ public class Database {
         Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
         SaveFileControl saveFileControl = new SaveFileControl();
 
-        filesTaskQueue.runSuspend(channel, task -> ioThreads.execute(r(() -> {
+        fileCreationTaskQueue.<Void>runSuspendWriting(channel, fileCreationTask -> ioThreads.execute(r(() -> {
             Files.createDirectories(filesDirectory);
+
             String fileName = name;
             while (true) {
                 Path filePath = filesDirectory.resolve(fileName);
                 try {
                     var output = Files.newOutputStream(filePath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+
                     final String fileNameFinal = fileName;
-                    saveFileControl.readyEvent.onNext(null);
-                    bytes.subscribe(c(nextBytes -> {
-                        output.write(nextBytes);
+
+                    fileTaskQueue.runSuspendWriting(filePath, task -> {
                         saveFileControl.readyEvent.onNext(null);
-                    }), r(() -> {
-                        logger.info("Saved file: " + fileNameFinal);
-                        output.close();
-                        task.complete(fileNameFinal);
-                    }));
+                        bytes.subscribe(c(nextBytes -> {
+                            output.write(nextBytes);
+                            saveFileControl.readyEvent.onNext(null);
+                        }), r(() -> {
+                            logger.info("Saved file: " + fileNameFinal);
+                            output.close();
+                            task.complete(null);
+                            saveFileControl.completion.complete(fileNameFinal);
+                        }));
+                    });
+
+                    fileCreationTask.complete(null);
                     break;
                 } catch (FileAlreadyExistsException e) {
                     fileName = StringUtils.incrementFileName(fileName);
