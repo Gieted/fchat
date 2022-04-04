@@ -217,14 +217,14 @@ public class Database {
         }
     }
 
-    public SaveFileControl saveFile(UUID channel, String name, Observable<byte[]> bytes) {
+    public SaveFileControl saveFile(UUID channel, String nameProposition, Observable<byte[]> bytes) {
         Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
         SaveFileControl saveFileControl = new SaveFileControl();
 
         fileCreationTaskQueue.<Void>runSuspendWriting(channel, fileCreationTask -> ioThreads.execute(r(() -> {
             Files.createDirectories(filesDirectory);
 
-            String fileName = name;
+            String fileName = nameProposition;
             while (true) {
                 Path filePath = filesDirectory.resolve(fileName);
                 try {
@@ -254,5 +254,51 @@ public class Database {
         })));
 
         return saveFileControl;
+    }
+
+    public record GetFileResult(Observable<byte[]> bytes, CompletableFuture<Long> size) {
+        public GetFileResult() {
+            this(new Observable<>(), new CompletableFuture<>());
+        }
+    }
+
+    public GetFileResult getFile(UUID channel, String name, Observable<Integer> bytesRequests) {
+        GetFileResult result = new GetFileResult();
+        Path path = messagesDirectory.resolve(channel.toString()).resolve("files").resolve(name);
+        System.out.println("xdd");
+
+        fileCreationTaskQueue.runSuspendReading(channel, fileCreationTask ->
+                fileTaskQueue.runSuspendReading(path, c(fileTask -> {
+                    // need to synchronize with fileCreationTaskQueue only to obtain fileTaskQueue
+                    fileCreationTask.complete(null);
+
+                    try {
+                        long size = Files.size(path);
+                        result.size.complete(size);
+                        System.out.println("44");
+
+                        var inputStream = Files.newInputStream(path);
+                        bytesRequests.subscribe(byteCount -> {
+                            try {
+                                System.out.println("1");
+                                byte[] nextBytes = inputStream.readNBytes(byteCount);
+                                System.out.println("2");
+                                if (nextBytes.length == 0) {
+                                    fileTask.complete(null);
+                                    result.bytes.complete();
+                                } else {
+                                    System.out.println("3");
+                                    result.bytes.onNext(nextBytes);
+                                }
+                            } catch (IOException e) {
+                                result.bytes.onException(e);
+                            }
+                        });
+                    } catch (IOException e) {
+                        result.bytes.onException(e);
+                    }
+                })));
+
+        return result;
     }
 }

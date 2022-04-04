@@ -32,6 +32,7 @@ public class Main {
         PacketEncoder packetEncoder = new PacketEncoder();
         Logger logger = new ConsoleLogger(ioThreads);
         Database database = new Database(workerThreads, ioThreads, Paths.get("."), packetEncoder, logger);
+        MessageManager messageManager = new MessageManager(database);
 
         ServerSocket server = new ServerSocket(port);
 
@@ -41,7 +42,7 @@ public class Main {
                 Socket socket = server.accept();
                 workerThreads.execute(() -> {
                     Connection connection = new Connection(packetEncoder, socket, workerThreads, ioThreads, logger);
-                    ClientHandler clientHandler = new ClientHandler(database, connection);
+                    ClientHandler clientHandler = new ClientHandler(database, connection, messageManager);
                     nextPacket(connection, clientHandler);
                 });
             }

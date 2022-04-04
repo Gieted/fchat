@@ -9,6 +9,9 @@ import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 
 import java.io.IOException;
+import java.net.ProtocolException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -147,6 +150,21 @@ public abstract class Commands {
             }
 
             default -> ExceptionHandler.onUnknownCommand(command);
+
+            case "download" -> {
+                if (channelConfig == null) {
+                    ExceptionHandler.onCommandNotUsedInChannelDirectory();
+                    return;
+                }
+
+                String name = args.get(0);
+
+                try {
+                    client.downloadFile(channelConfig.id(), name, Paths.get("."), System.out::println);
+                } catch (NotDirectoryException | NoSuchFileException | ProtocolException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }

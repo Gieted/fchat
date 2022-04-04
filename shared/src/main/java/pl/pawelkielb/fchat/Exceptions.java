@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 
 public abstract class Exceptions {
     @SuppressWarnings("unchecked")
-    private static <E extends Exception> void throwAsUnchecked(Exception exception) throws E {
+    public static <E extends Exception> void throwAsUnchecked(Exception exception) throws E {
         throw (E) exception;
     }
 

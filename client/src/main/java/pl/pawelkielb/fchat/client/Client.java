@@ -5,6 +5,7 @@ import pl.pawelkielb.fchat.DisconnectedException;
 import pl.pawelkielb.fchat.StringUtils;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
+import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
@@ -170,14 +171,18 @@ public class Client {
         }
     }
 
-    public void downloadFile(String name, Path destinationDirectory, Consumer<Double> progressConsumer) throws IOException {
+    public void downloadFile(UUID channel, String name, Path destinationDirectory, Consumer<Double> progressConsumer) throws
+            NotDirectoryException,
+            NoSuchFileException,
+            ProtocolException {
+
         if (!Files.isDirectory(destinationDirectory)) {
             throw new NotDirectoryException(destinationDirectory.toString());
         }
 
         login();
 
-        connection.sendPacket(new RequestFilePacket(name));
+        connection.sendPacket(new RequestFilePacket(channel, name));
 
         Packet packet = readSync();
 
@@ -205,12 +210,15 @@ public class Client {
                     nextBytes = connection.readBytes().get();
                     output.write(nextBytes);
                     progressConsumer.accept(((double) bytesWritten) / fileSize);
+                    connection.sendPacket(null);
                 } while (nextBytes.length != 0);
                 break;
             } catch (FileAlreadyExistsException e) {
                 filename = StringUtils.incrementFileName(filename);
             } catch (ExecutionException | InterruptedException e) {
                 throw new AssertionError(e);
+            } catch (IOException e) {
+                throw new FileWriteException(filePath, e);
             }
         }
     }
