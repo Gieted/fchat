@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.6.10" apply false
+    kotlin("jvm") version "1.6.20" apply false
 }
 
 allprojects {
@@ -29,5 +29,5 @@ subprojects {
     }
 }
 
-project.extra["kotestVersion"] = "5.2.1"
+project.extra["kotestVersion"] = "5.2.2"
 project.extra["mockkVersion"] = "1.12.3"
