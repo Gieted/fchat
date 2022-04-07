@@ -134,8 +134,12 @@ public abstract class Commands {
                     try {
                         messageCount = Integer.parseInt(args.get(0));
                     } catch (NumberFormatException e) {
-                        ExceptionHandler.onIllegalArgument("messageCount must be an integer");
+                        ExceptionHandler.onIllegalArgument("The first argument has to be an integer");
                     }
+                }
+
+                if (messageCount < 1) {
+                    return;
                 }
 
                 final int messageCountFinal = messageCount;
