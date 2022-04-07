@@ -82,29 +82,40 @@ public abstract class Commands {
         switch (command) {
             case "create" -> {
                 if (args.size() == 0) {
-                    ExceptionHandler.onIllegalArgument("Please provide a channel name or recipient's username");
+                    ExceptionHandler.onIllegalArgument("Please provide a channel name");
                 }
 
-                if (args.size() == 1) {
-                    Name recipient = Name.of(args.get(0));
-                    doNetwork(() -> client.createPrivateChannel(recipient));
-                } else {
-                    var members = args
-                            .subList(1, args.size())
-                            .stream()
-                            .filter(Name::isValid)
-                            .map(Name::of)
-                            .toList();
-
-                    Name channelName;
-                    try {
-                        channelName = Name.of(args.get(0));
-                    } catch (IllegalArgumentException e) {
-                        ExceptionHandler.onIllegalNameProvided();
-                        return;
-                    }
-                    doNetwork(() -> client.createGroupChannel(channelName, members));
+                Name channelName;
+                try {
+                    channelName = Name.of(args.get(0));
+                } catch (IllegalArgumentException e) {
+                    ExceptionHandler.onIllegalNameProvided();
+                    return;
                 }
+
+                var members = args
+                        .subList(1, args.size())
+                        .stream()
+                        .filter(Name::isValid)
+                        .map(Name::of)
+                        .toList();
+
+                doNetwork(() -> client.createGroupChannel(channelName, members));
+            }
+
+            case "priv" -> {
+                if (args.size() == 0) {
+                    ExceptionHandler.onIllegalArgument("Please provide recipient's username");
+                }
+
+                Name recipient;
+                try {
+                    recipient = Name.of(args.get(0));
+                } catch (IllegalArgumentException e) {
+                    ExceptionHandler.onIllegalArgument("Invalid recipient", e);
+                    return;
+                }
+                doNetwork(() -> client.createPrivateChannel(recipient));
             }
 
             case "send" -> {

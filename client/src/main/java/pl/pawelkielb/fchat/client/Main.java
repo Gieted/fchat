@@ -32,12 +32,12 @@ public class Main {
                                 commands:
                                   fchat init
                                   fchat create
+                                  fchat priv
                                   fchat send
                                   fchat read
                                   fchat sync
                                   fchat sendfile
-                                  fchat download
-                                  fchat live"""
+                                  fchat download"""
                 );
                 System.exit(0);
             }

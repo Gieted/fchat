@@ -76,10 +76,14 @@ public abstract class ExceptionHandler {
         System.exit(8);
     }
 
-    public static void onIllegalArgument(String message) {
+    public static void onIllegalArgument(String message, IllegalArgumentException e) {
         checkDevMode();
-        printError(message);
+        printError(getExceptionPath(new RuntimeException(message, e)));
         System.exit(9);
+    }
+
+    public static void onIllegalArgument(String message) {
+        onIllegalArgument(message, null);
     }
 
     public static void onCannotFindClientConfig() {
