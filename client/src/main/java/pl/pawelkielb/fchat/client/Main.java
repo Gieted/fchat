@@ -25,62 +25,66 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        if (args.length == 0) {
-            System.out.println(
-                    """
-                            commands:
-                              fchat init
-                              fchat create
-                              fchat send
-                              fchat read
-                              fchat sync
-                              fchat sendfile
-                              fchat download
-                              fchat live"""
+        try {
+            if (args.length == 0) {
+                System.out.println(
+                        """
+                                commands:
+                                  fchat init
+                                  fchat create
+                                  fchat send
+                                  fchat read
+                                  fchat sync
+                                  fchat sendfile
+                                  fchat download
+                                  fchat live"""
+                );
+                System.exit(0);
+            }
+
+            Database database = new Database(Paths.get("."));
+
+            ClientConfig clientConfig;
+            ChannelConfig channelConfig = null;
+
+            clientConfig = getClientConfigCatching(database);
+
+
+            if (clientConfig == null) {
+                try {
+                    channelConfig = Database.readChannelConfig(Paths.get("channel.properties"));
+                } catch (Database.InvalidConfigException e) {
+                    ExceptionHandler.onInvalidChannelConfig(e);
+                }
+
+                if (channelConfig != null) {
+                    database = new Database(Paths.get(".."));
+                    clientConfig = getClientConfigCatching(database);
+                }
+            }
+
+            PacketEncoder packetEncoder = new PacketEncoder();
+            Executor executor = Runnable::run;
+            Console console = new Console();
+            Observable<Void> applicationExitEvent = new Observable<>();
+
+            String command = args[0];
+            List<String> commandArguments = Arrays.asList(args).subList(1, args.length);
+            Commands.execute(
+                    command,
+                    commandArguments,
+                    clientConfig,
+                    channelConfig,
+                    console,
+                    database,
+                    packetEncoder,
+                    executor,
+                    applicationExitEvent
             );
-            System.exit(0);
+
+            applicationExitEvent.onNext(null);
+        } catch (Exception e) {
+            ExceptionHandler.onUnknownException(e);
         }
-
-        Database database = new Database(Paths.get("."));
-
-        ClientConfig clientConfig;
-        ChannelConfig channelConfig = null;
-
-        clientConfig = getClientConfigCatching(database);
-
-
-        if (clientConfig == null) {
-            try {
-                channelConfig = Database.readChannelConfig(Paths.get("channel.properties"));
-            } catch (Database.InvalidConfigException e) {
-                ExceptionHandler.onInvalidChannelConfig(e);
-            }
-
-            if (channelConfig != null) {
-                database = new Database(Paths.get(".."));
-                clientConfig = getClientConfigCatching(database);
-            }
-        }
-
-        PacketEncoder packetEncoder = new PacketEncoder();
-        Executor executor = Runnable::run;
-        Console console = new Console();
-        Observable<Void> applicationExitEvent = new Observable<>();
-
-        String command = args[0];
-        List<String> commandArguments = Arrays.asList(args).subList(1, args.length);
-        Commands.execute(
-                command,
-                commandArguments,
-                clientConfig,
-                channelConfig,
-                console,
-                database,
-                packetEncoder,
-                executor,
-                applicationExitEvent
-        );
-
-        applicationExitEvent.onNext(null);
     }
 }

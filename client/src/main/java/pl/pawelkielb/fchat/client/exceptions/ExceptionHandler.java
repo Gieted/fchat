@@ -117,4 +117,10 @@ public abstract class ExceptionHandler {
         printError(getExceptionPath(new RuntimeException("Invalid channel config", e)));
         System.exit(15);
     }
+
+    public static void onUnknownException(Exception e) {
+        checkDevMode();
+        printError(getExceptionPath(new RuntimeException("Unknown error happened", e)));
+        System.exit(16);
+    }
 }
