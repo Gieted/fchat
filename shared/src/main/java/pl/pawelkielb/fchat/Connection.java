@@ -136,7 +136,7 @@ public class Connection {
     public CompletableFuture<byte[]> readBytes() {
         CompletableFuture<byte[]> future = new CompletableFuture<>();
         readBytesInternal().thenAccept(bytes -> {
-            logger.info(String.format("Recieved %d bytes", bytes.length));
+            logger.info(String.format("Received %d bytes", bytes.length));
             future.complete(bytes);
         });
 
@@ -166,14 +166,14 @@ public class Connection {
         CompletableFuture<Packet> future = new CompletableFuture<>();
         readBytesInternal().thenAccept(bytes -> {
             if (bytes.length == 0) {
-                logger.info("Recieved packet: null");
+                logger.info("Received packet: null");
                 future.complete(null);
                 return;
             }
 
             workerThreads.execute(() -> {
                 Packet packet = packetEncoder.decode(bytes);
-                logger.info("Recieved packet: " + packet);
+                logger.info("Received packet: " + packet);
                 future.complete(packet);
             });
         });
