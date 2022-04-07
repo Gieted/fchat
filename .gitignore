@@ -117,5 +117,5 @@ gradle-app.setting
 
 
 test_server/*
-test_clients/**/logs.txt
-test_clients/**/channel.properties
+test_clients/*
+!test_clients/*/fchat.properties

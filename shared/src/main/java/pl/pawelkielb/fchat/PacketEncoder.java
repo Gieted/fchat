@@ -128,6 +128,7 @@ public class PacketEncoder {
     public byte[] toBytes(RequestFilePacket packet) {
         Properties properties = new Properties();
         properties.setProperty("type", "RequestFile");
+        properties.setProperty("channel", packet.channel().toString());
         properties.setProperty("name", packet.name());
         String packetString = propertiesToString(properties);
 
@@ -209,9 +210,10 @@ public class PacketEncoder {
             }
 
             case "RequestFile" -> {
+                UUID channel = UUID.fromString(properties.getProperty("channel"));
                 String name = properties.getProperty("name");
 
-                yield new RequestFilePacket(name);
+                yield new RequestFilePacket(channel, name);
             }
 
             default -> throw new PacketDecodeException("Unknown packet type");
