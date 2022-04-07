@@ -170,13 +170,8 @@ public abstract class Commands {
                     return;
                 }
 
-                String name = args.get(0);
-
-                try {
-                    client.downloadFile(channelConfig.id(), name, Paths.get("."), System.out::println);
-                } catch (NotDirectoryException | NoSuchFileException | ProtocolException e) {
-                    e.printStackTrace();
-                }
+                String fileName = args.get(0);
+                doNetwork(() -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), System.out::println));
             }
         }
     }
