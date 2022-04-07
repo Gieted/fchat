@@ -21,6 +21,15 @@ public final class Name {
         return new Name(name);
     }
 
+    public static boolean isValid(String name) {
+        try {
+            Name.of(name);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     public String value() {
         return value;
     }

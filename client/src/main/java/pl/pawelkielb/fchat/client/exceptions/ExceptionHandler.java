@@ -80,4 +80,10 @@ public abstract class ExceptionHandler {
         printError("Server unexpectedly disconnected");
         System.exit(12);
     }
+
+    public static void onIllegalNameProvided() {
+        checkDevMode();
+        printError("Name may not contain commas, equals symbols and new line characters");
+        System.exit(13);
+    }
 }
