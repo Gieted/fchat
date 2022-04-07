@@ -9,9 +9,6 @@ import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 
 import java.io.IOException;
-import java.net.ProtocolException;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -26,7 +23,7 @@ public abstract class Commands {
         try {
             runnable.run();
         } catch (IOException e) {
-            ExceptionHandler.onNetworkException();
+            ExceptionHandler.onNetworkException(e);
         } catch (DisconnectedException e) {
             ExceptionHandler.onServerDisconnected();
         }

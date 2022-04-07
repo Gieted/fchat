@@ -3,7 +3,10 @@ package pl.pawelkielb.fchat.client.exceptions;
 import pl.pawelkielb.fchat.client.Database;
 import pl.pawelkielb.fchat.client.Main;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class ExceptionHandler {
     private static void printError(String message) {
@@ -14,6 +17,21 @@ public abstract class ExceptionHandler {
         if (Main.DEV_MODE) {
             throw new RuntimeException();
         }
+    }
+
+    private static String getExceptionPath(Exception e) {
+        List<String> result = new ArrayList<>();
+        Throwable throwable = e;
+        while (throwable != null) {
+            if (throwable.getMessage() != null) {
+                result.add(throwable.getMessage());
+            } else {
+                result.add(throwable.getClass().getSimpleName());
+            }
+            throwable = throwable.getCause();
+        }
+
+        return String.join(" -> ", result);
     }
 
     public static void onCommandNotUsedInChannelDirectory() {
@@ -52,9 +70,9 @@ public abstract class ExceptionHandler {
         System.exit(7);
     }
 
-    public static void onNetworkException() {
+    public static void onNetworkException(IOException e) {
         checkDevMode();
-        printError("There was an error while sending data");
+        printError(getExceptionPath(new RuntimeException("There was an error while sending data", e)));
         System.exit(8);
     }
 
@@ -88,9 +106,15 @@ public abstract class ExceptionHandler {
         System.exit(13);
     }
 
-    public static void onIllegalConfig(Database.IllegalConfigException e) {
+    public static void onInvalidClientConfig(Database.InvalidConfigException e) {
         checkDevMode();
-        printError("Illegal config: " + e.getMessage());
+        printError(getExceptionPath(new RuntimeException("Invalid client config", e)));
         System.exit(14);
+    }
+
+    public static void onInvalidChannelConfig(Database.InvalidConfigException e) {
+        checkDevMode();
+        printError(getExceptionPath(new RuntimeException("Invalid channel config", e)));
+        System.exit(15);
     }
 }

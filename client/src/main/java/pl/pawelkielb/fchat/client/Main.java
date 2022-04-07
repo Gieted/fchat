@@ -17,8 +17,8 @@ public class Main {
     private static ClientConfig getClientConfigCatching(Database database) {
         try {
             return database.getClientConfig();
-        } catch (Database.IllegalConfigException e) {
-            ExceptionHandler.onIllegalConfig(e);
+        } catch (Database.InvalidConfigException e) {
+            ExceptionHandler.onInvalidClientConfig(e);
         }
 
         throw new AssertionError();
@@ -50,7 +50,11 @@ public class Main {
 
 
         if (clientConfig == null) {
-            channelConfig = Database.readChannelConfig(Paths.get("channel.properties"));
+            try {
+                channelConfig = Database.readChannelConfig(Paths.get("channel.properties"));
+            } catch (Database.InvalidConfigException e) {
+                ExceptionHandler.onInvalidChannelConfig(e);
+            }
 
             if (channelConfig != null) {
                 database = new Database(Paths.get(".."));

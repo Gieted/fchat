@@ -18,6 +18,9 @@ public final class Name {
         if (name.contains("\n")) {
             throw new IllegalArgumentException("Name cannot contain new line characters");
         }
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("Name cannot be blank");
+        }
         return new Name(name);
     }
 

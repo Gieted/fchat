@@ -17,8 +17,12 @@ import java.util.Properties;
 import java.util.UUID;
 
 public class Database {
-    public static class IllegalConfigException extends RuntimeException {
-        public IllegalConfigException(String message) {
+    public static class InvalidConfigException extends RuntimeException {
+        public InvalidConfigException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        public InvalidConfigException(String message) {
             super(message);
         }
     }
@@ -62,7 +66,13 @@ public class Database {
             return null;
         }
 
-        UUID channelId = UUID.fromString(properties.getProperty("id"));
+        String channelIdString = properties.getProperty("id");
+
+        if (channelIdString == null) {
+            throw new InvalidConfigException("Channel id must be provided");
+        }
+
+        UUID channelId = UUID.fromString(channelIdString);
 
         return new ChannelConfig(channelId);
     }
@@ -76,16 +86,23 @@ public class Database {
         }
         Name username;
         try {
-             username = Name.of(properties.getProperty("username"));
+            username = Name.of(properties.getProperty("username"));
         } catch (IllegalArgumentException e) {
-            throw new IllegalConfigException("Invalid username: " + e.getMessage());
+            throw new InvalidConfigException("Invalid username", e);
+        } catch (NullPointerException e) {
+            throw new InvalidConfigException("Username must be provided");
         }
         var serverHost = properties.getProperty("server_host");
+
+        if (serverHost == null) {
+            throw new InvalidConfigException("Server host must be provided");
+        }
+
         int serverPort;
         try {
             serverPort = Integer.parseInt(properties.getProperty("server_port"));
         } catch (NumberFormatException e) {
-            throw new IllegalConfigException("Invalid server port");
+            throw new InvalidConfigException("Invalid server port", e);
         }
 
         return new ClientConfig(username, serverHost, serverPort);
