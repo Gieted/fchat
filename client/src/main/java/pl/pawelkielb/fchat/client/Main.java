@@ -4,6 +4,7 @@ import pl.pawelkielb.fchat.Observable;
 import pl.pawelkielb.fchat.PacketEncoder;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
+import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;
 
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -12,6 +13,16 @@ import java.util.concurrent.Executor;
 
 public class Main {
     public static final boolean DEV_MODE = System.getProperty("DEV_MODE") != null;
+
+    private static ClientConfig getClientConfigCatching(Database database) {
+        try {
+            return database.getClientConfig();
+        } catch (Database.IllegalConfigException e) {
+            ExceptionHandler.onIllegalConfig(e);
+        }
+
+        throw new AssertionError();
+    }
 
     public static void main(String[] args) {
         if (args.length == 0) {
@@ -34,13 +45,16 @@ public class Main {
 
         ClientConfig clientConfig;
         ChannelConfig channelConfig = null;
-        clientConfig = database.getClientConfig();
+
+        clientConfig = getClientConfigCatching(database);
+
+
         if (clientConfig == null) {
             channelConfig = Database.readChannelConfig(Paths.get("channel.properties"));
 
             if (channelConfig != null) {
                 database = new Database(Paths.get(".."));
-                clientConfig = database.getClientConfig();
+                clientConfig = getClientConfigCatching(database);
             }
         }
 

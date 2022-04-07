@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.client.exceptions;
 
+import pl.pawelkielb.fchat.client.Database;
 import pl.pawelkielb.fchat.client.Main;
 
 import java.nio.file.Path;
@@ -85,5 +86,11 @@ public abstract class ExceptionHandler {
         checkDevMode();
         printError("Name may not contain commas, equals symbols and new line characters");
         System.exit(13);
+    }
+
+    public static void onIllegalConfig(Database.IllegalConfigException e) {
+        checkDevMode();
+        printError("Illegal config: " + e.getMessage());
+        System.exit(14);
     }
 }

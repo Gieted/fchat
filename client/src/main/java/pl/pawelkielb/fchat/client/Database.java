@@ -17,6 +17,12 @@ import java.util.Properties;
 import java.util.UUID;
 
 public class Database {
+    public static class IllegalConfigException extends RuntimeException {
+        public IllegalConfigException(String message) {
+            super(message);
+        }
+    }
+
     private final Path rootDirectory;
 
     public Database(Path rootDirectory) {
@@ -68,9 +74,19 @@ public class Database {
         if (properties == null) {
             return null;
         }
-        Name username = Name.of(properties.getProperty("username"));
-        String serverHost = properties.getProperty("server_host");
-        int serverPort = Integer.parseInt(properties.getProperty("server_port"));
+        Name username;
+        try {
+             username = Name.of(properties.getProperty("username"));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalConfigException("Invalid username: " + e.getMessage());
+        }
+        var serverHost = properties.getProperty("server_host");
+        int serverPort;
+        try {
+            serverPort = Integer.parseInt(properties.getProperty("server_port"));
+        } catch (NumberFormatException e) {
+            throw new IllegalConfigException("Invalid server port");
+        }
 
         return new ClientConfig(username, serverHost, serverPort);
     }
