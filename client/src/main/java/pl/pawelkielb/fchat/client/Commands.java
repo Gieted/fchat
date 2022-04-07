@@ -177,6 +177,10 @@ public abstract class Commands {
                     return;
                 }
 
+                if (args.size() == 0) {
+                    ExceptionHandler.onMissingArgument("Please provide a file name");
+                }
+
                 String fileName = args.get(0);
                 doNetwork(() -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), System.out::println));
             }

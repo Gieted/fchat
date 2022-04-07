@@ -127,4 +127,10 @@ public abstract class ExceptionHandler {
         printError(getExceptionPath(new RuntimeException("Unknown error happened", e)));
         System.exit(16);
     }
+
+    public static void onMissingArgument(String message) {
+        checkDevMode();
+        printError(message);
+        System.exit(17);
+    }
 }
