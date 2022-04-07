@@ -84,16 +84,11 @@ public abstract class Commands {
 
         switch (command) {
             case "create" -> {
-                if (channelConfig != null) {
-                    ExceptionHandler.onCommandUsedInChannelDirectory();
-                }
-
                 if (args.size() == 1) {
                     Name recipient = Name.of(args.get(0));
                     doNetwork(() -> client.createPrivateChannel(recipient));
                 } else {
-                    List<Name> members;
-                    members = args
+                    var members = args
                             .subList(1, args.size())
                             .stream()
                             .filter(Name::isValid)
