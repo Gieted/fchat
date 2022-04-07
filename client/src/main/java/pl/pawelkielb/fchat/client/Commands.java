@@ -84,6 +84,10 @@ public abstract class Commands {
 
         switch (command) {
             case "create" -> {
+                if (args.size() == 0) {
+                    ExceptionHandler.onIllegalArgument("Please provide a channel name or recipient's username");
+                }
+
                 if (args.size() == 1) {
                     Name recipient = Name.of(args.get(0));
                     doNetwork(() -> client.createPrivateChannel(recipient));
