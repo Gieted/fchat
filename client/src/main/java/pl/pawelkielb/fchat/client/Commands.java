@@ -166,7 +166,9 @@ public abstract class Commands {
                 }
 
                 Path path = Paths.get(args.get(0));
-                doNetwork(() -> client.sendFile(channelConfig.id(), path, System.out::println));
+                ProgressBar progressBar = new ProgressBar(console);
+                doNetwork(() -> client.sendFile(channelConfig.id(), path, progressBar::update));
+                console.updateLine("");
             }
 
             default -> ExceptionHandler.onUnknownCommand(command);
@@ -182,7 +184,9 @@ public abstract class Commands {
                 }
 
                 String fileName = args.get(0);
-                doNetwork(() -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), System.out::println));
+                ProgressBar progressBar = new ProgressBar(console);
+                doNetwork(() -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), progressBar::update));
+                console.updateLine("");
             }
         }
     }
