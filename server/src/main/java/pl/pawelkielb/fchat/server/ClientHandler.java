@@ -103,9 +103,7 @@ public class ClientHandler {
             Observable<Integer> byteRequests = new Observable<>();
             Database.GetFileResult file = database.getFile(requestFilePacket.channel(), requestFilePacket.name(), byteRequests);
             file.bytes().subscribe(nextBytes -> {
-                System.out.println("4");
                 connection.sendBytes(nextBytes);
-                System.out.println("5");
                 connection.readPacket().thenRun(() -> byteRequests.onNext(1000));
             }, () -> {
                 connection.sendPacket(null);

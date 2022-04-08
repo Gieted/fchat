@@ -210,7 +210,10 @@ public class Client {
                     nextBytes = connection.readBytes().get();
                     output.write(nextBytes);
                     progressConsumer.accept(((double) bytesWritten) / fileSize);
-                    connection.sendPacket(null);
+
+                    if (nextBytes.length != 0) {
+                        connection.sendPacket(null);
+                    }
                 } while (nextBytes.length != 0);
                 break;
             } catch (FileAlreadyExistsException e) {
