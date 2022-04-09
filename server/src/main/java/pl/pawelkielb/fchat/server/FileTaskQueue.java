@@ -32,13 +32,7 @@ public class FileTaskQueue<K> {
     private record WriteLayer(Task<?> task) implements Layer {
     }
 
-    private record FileData(TaskQueue taskQueue, List<Layer> layers) {
-        private FileData() {
-            this(new TaskQueue(), new LinkedList<>());
-        }
-    }
-
-    private final Map<K, FileData> queues = new HashMap<>();
+    private final Map<K, List<Layer>> layersByKey = new HashMap<>();
     private final TaskQueue masterQueue = new TaskQueue();
 
     private static <T> void processLayer_processTask(Task<T> task, List<CompletableFuture<?>> futures) {
@@ -52,9 +46,9 @@ public class FileTaskQueue<K> {
         task.fn.accept(future);
     }
 
-    private void processLayer(CompletableFuture<Void> processLayerTask, FileData fileData) {
+    private void processLayers(List<Layer> layers) {
         masterQueue.run(() -> {
-            Layer layer = fileData.layers.get(0);
+            Layer layer = layers.get(0);
             if (layer instanceof ReadLayer readLayer) {
                 List<CompletableFuture<?>> futures = new ArrayList<>();
                 for (var tasksIterator = readLayer.tasks.iterator(); tasksIterator.hasNext(); ) {
@@ -71,17 +65,13 @@ public class FileTaskQueue<K> {
                 }
 
                 if (readLayer.tasks.isEmpty()) {
-                    fileData.layers.remove(0);
-                    processLayerTask.complete(null);
+                    layers.remove(0);
                     return;
                 }
 
-                Futures.allOf(futures).thenRun(() -> processLayer(processLayerTask, fileData));
+                Futures.allOf(futures).thenRun(() -> processLayers(layers));
             } else if (layer instanceof WriteLayer writeLayer) {
-                writeLayer.task.future.thenRun(() -> masterQueue.run(() -> {
-                    fileData.layers.remove(0);
-                    processLayerTask.complete(null);
-                }));
+                writeLayer.task.future.thenRun(() -> masterQueue.run(() -> layers.remove(0)));
                 writeLayer.task.hasStarted = true;
                 processLayer_processTask(writeLayer.task);
 
@@ -91,34 +81,29 @@ public class FileTaskQueue<K> {
         });
     }
 
-    private FileData getFileData(K key) {
-        // cleanup queues
-        queues.entrySet().removeIf(entry -> entry.getKey() != key && !entry.getValue().taskQueue.isWorking());
+    private List<Layer> getLayers(K key) {
+        // cleanup layer lists
+        layersByKey.entrySet().removeIf(entry -> entry.getKey() != key && entry.getValue().isEmpty());
 
-        FileData fileData = queues.get(key);
-        if (fileData == null) {
-            fileData = new FileData();
-            queues.put(key, fileData);
-        }
-
-        return fileData;
+        return layersByKey.computeIfAbsent(key, k -> new LinkedList<>());
     }
 
     public <T> CompletableFuture<T> runSuspendReading(K key, Consumer<CompletableFuture<T>> fn) {
         CompletableFuture<T> masterFuture = new CompletableFuture<>();
 
         masterQueue.run(() -> {
-            FileData fileData = getFileData(key);
+            List<Layer> layers = getLayers(key);
 
-            Layer lastLayer = lastOrNull(fileData.layers);
+            Layer lastLayer = lastOrNull(layers);
             if (lastLayer == null || lastLayer instanceof WriteLayer) {
                 lastLayer = new ReadLayer();
-                fileData.layers.add(lastLayer);
+                layers.add(lastLayer);
             }
 
             ((ReadLayer) lastLayer).tasks.add(new Task<>(fn, masterFuture));
-            fileData.taskQueue.<Void>runSuspend(task -> processLayer(task, fileData));
-        });
+
+            return layers;
+        }).thenAccept(this::processLayers);
 
         return masterFuture;
     }
@@ -127,12 +112,13 @@ public class FileTaskQueue<K> {
         CompletableFuture<T> masterFuture = new CompletableFuture<>();
 
         masterQueue.run(() -> {
-            FileData fileData = getFileData(key);
+            List<Layer> layers = getLayers(key);
 
             WriteLayer writeLayer = new WriteLayer(new Task<>(fn, masterFuture));
-            fileData.layers.add(writeLayer);
-            fileData.taskQueue.<Void>runSuspend(task -> processLayer(task, fileData));
-        });
+            layers.add(writeLayer);
+
+            return layers;
+        }).thenAccept(this::processLayers);
 
         return masterFuture;
     }

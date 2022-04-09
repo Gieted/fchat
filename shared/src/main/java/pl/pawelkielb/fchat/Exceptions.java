@@ -88,6 +88,17 @@ public abstract class Exceptions {
         };
     }
 
+    public static <T, E extends Exception> Function<T, Void> f(Consumer_WithExceptions<T, E> fn) {
+        return (t) -> {
+            try {
+                fn.accept(t);
+            } catch (Exception e) {
+                throwAsUnchecked(e);
+            }
+            return null;
+        };
+    }
+
     public static <R, E extends Exception> Supplier<R> s(Supplier_WithExceptions<R, E> fn) {
         return () -> {
             try {

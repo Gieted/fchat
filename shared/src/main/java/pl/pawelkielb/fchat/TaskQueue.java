@@ -5,6 +5,7 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class TaskQueue {
 
@@ -51,5 +52,9 @@ public class TaskQueue {
             fn.run();
             task.complete(null);
         });
+    }
+
+    public <T> CompletableFuture<T> run(Supplier<T> fn) {
+        return runSuspend(task -> task.complete(fn.get()));
     }
 }

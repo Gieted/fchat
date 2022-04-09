@@ -120,6 +120,9 @@ public class ClientHandler {
                     connection.sendBytes(new byte[0]);
                     handlePacketFuture.complete(null);
                 }, handlePacketFuture::completeExceptionally);
+            }).exceptionally(throwable -> {
+                handlePacketFuture.completeExceptionally(throwable);
+                return null;
             });
 
         } else {

@@ -266,10 +266,12 @@ public class Database {
                                     consumer.onNext(nextBytes);
                                 }
                             } catch (IOException e) {
+                                fileTask.complete(null);
                                 consumer.onException(e);
                             }
                         });
                     } catch (IOException e) {
+                        fileTask.complete(null);
                         consumer.onException(e);
                     }
                 })));
@@ -288,6 +290,7 @@ public class Database {
                         task.complete(null);
                         result.complete(size);
                     } catch (IOException e) {
+                        task.complete(null);
                         result.completeExceptionally(e);
                     }
                 })));
