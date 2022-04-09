@@ -36,7 +36,7 @@ public abstract class Commands {
                 database.saveClientConfig(defaultClientConfig);
                 return;
             } catch (FileWriteException e) {
-                ExceptionHandler.onCannotWriteFile(e.getPath());
+                ExceptionHandler.onCannotWriteFile(e.getPath(), e);
                 throw new AssertionError();
             }
         }
@@ -78,7 +78,7 @@ public abstract class Commands {
                 try {
                     channelName = Name.of(args.get(0));
                 } catch (IllegalArgumentException e) {
-                    ExceptionHandler.onIllegalNameProvided();
+                    ExceptionHandler.onIllegalNameProvided(e);
                     return;
                 }
 
@@ -160,8 +160,6 @@ public abstract class Commands {
                 console.updateLine("");
             }
 
-            default -> ExceptionHandler.onUnknownCommand(command);
-
             case "download" -> {
                 if (channelConfig == null) {
                     ExceptionHandler.onCommandNotUsedInChannelDirectory();
@@ -177,6 +175,8 @@ public abstract class Commands {
                 doNetwork(() -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), progressBar::update));
                 console.updateLine("");
             }
+
+            default -> ExceptionHandler.onUnknownCommand(command);
         }
     }
 
@@ -190,7 +190,7 @@ public abstract class Commands {
         } catch (IOException e) {
             ExceptionHandler.onNetworkException(e);
         } catch (DisconnectedException e) {
-            ExceptionHandler.onServerDisconnected();
+            ExceptionHandler.onServerDisconnected(e);
         }
     }
 }

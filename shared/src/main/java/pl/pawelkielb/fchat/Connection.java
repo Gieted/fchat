@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static pl.pawelkielb.fchat.Exceptions.*;
 
+
 public class Connection {
     private final PacketEncoder packetEncoder;
     private Socket socket;
@@ -138,8 +139,7 @@ public class Connection {
             logger.info(String.format("Received %d bytes", bytes.length));
             future.complete(bytes);
         }).exceptionally(vf(future::completeExceptionally));
-        ;
-
+        
         return future;
     }
 

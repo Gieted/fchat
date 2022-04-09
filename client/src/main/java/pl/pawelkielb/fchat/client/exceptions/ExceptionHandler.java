@@ -1,5 +1,6 @@
 package pl.pawelkielb.fchat.client.exceptions;
 
+import pl.pawelkielb.fchat.DisconnectedException;
 import pl.pawelkielb.fchat.Exceptions;
 import pl.pawelkielb.fchat.client.Database;
 import pl.pawelkielb.fchat.client.Main;
@@ -28,15 +29,15 @@ public abstract class ExceptionHandler {
         System.exit(4);
     }
 
-    public static void onCannotReadFile(Path path) {
+    public static void onCannotReadFile(Path path, FileReadException e) {
         checkDevMode();
-        printError(String.format("Cannot read a file (%s)", path.toAbsolutePath()));
+        printError(getExceptionMessage(String.format("Cannot read a file (%s)", path.toAbsolutePath()), e));
         System.exit(5);
     }
 
-    public static void onCannotWriteFile(Path path) {
+    public static void onCannotWriteFile(Path path, FileWriteException e) {
         checkDevMode();
-        printError(String.format("Cannot write a file (%s)", path.toAbsolutePath()));
+        printError(getExceptionMessage(String.format("Cannot write a file (%s)", path.toAbsolutePath()), e));
         System.exit(6);
     }
 
@@ -46,9 +47,9 @@ public abstract class ExceptionHandler {
         System.exit(7);
     }
 
-    public static void onServerDisconnected() {
-        checkDevMode();
-        printError("The server has unexpectedly disconnected");
+    public static void onServerDisconnected(DisconnectedException e) {
+        checkDevMode(e);
+        printError(getExceptionMessage("The server has unexpectedly disconnected", e));
         System.exit(8);
     }
 
@@ -65,8 +66,8 @@ public abstract class ExceptionHandler {
     }
 
     public static void onIllegalArgument(String message, IllegalArgumentException e) {
-        checkDevMode();
-        printError(getExceptionMessage(message, e));
+        checkDevMode(e);
+        printError(getExceptionMessage("Illegal argument value -> " + message, e));
         System.exit(11);
     }
 
@@ -86,14 +87,14 @@ public abstract class ExceptionHandler {
         System.exit(13);
     }
 
-    public static void onIllegalNameProvided() {
-        checkDevMode();
-        printError("Name may not contain commas, equals symbols or new line characters");
+    public static void onIllegalNameProvided(IllegalArgumentException e) {
+        checkDevMode(e);
+        printError(getExceptionMessage("Illegal name provided", e));
         System.exit(14);
     }
 
     public static void onUnknownException(Exception e) {
-        checkDevMode();
+        checkDevMode(e);
         printError(getExceptionMessage("An unknown error has happened", e));
         System.exit(100);
     }

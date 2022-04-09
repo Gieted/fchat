@@ -9,10 +9,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class PacketEncoder {
@@ -175,7 +172,14 @@ public class PacketEncoder {
             case "UpdateChannel" -> {
                 UUID channelId = UUID.fromString(properties.getProperty("channel"));
                 Name channelName = Name.of(properties.getProperty("name"));
-                List<Name> members = Arrays.stream(properties.getProperty("members").split(",")).map(Name::of).toList();
+                String membersString = properties.getProperty("members");
+
+                List<Name> members;
+                if (!membersString.isEmpty()) {
+                    members = Arrays.stream(membersString.split(",")).map(Name::of).toList();
+                } else {
+                    members = Collections.emptyList();
+                }
 
                 yield new UpdateChannelPacket(channelId, channelName, members);
             }
