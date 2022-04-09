@@ -12,7 +12,15 @@ public class FileTaskQueue<K> {
     private interface Layer {
     }
 
-    private record Task<T>(Consumer<CompletableFuture<T>> fn, CompletableFuture<T> future) {
+    private static class Task<T> {
+        final Consumer<CompletableFuture<T>> fn;
+        final CompletableFuture<T> future;
+        boolean hasStarted = false;
+
+        public Task(Consumer<CompletableFuture<T>> fn, CompletableFuture<T> future) {
+            this.fn = fn;
+            this.future = future;
+        }
     }
 
     private record ReadLayer(List<Task<?>> tasks) implements Layer {
@@ -49,15 +57,24 @@ public class FileTaskQueue<K> {
             Layer layer = fileData.layers.get(0);
             if (layer instanceof ReadLayer readLayer) {
                 List<CompletableFuture<?>> futures = new ArrayList<>();
+                for (var tasksIterator = readLayer.tasks.iterator(); tasksIterator.hasNext(); ) {
+                    var layerTask = tasksIterator.next();
+                    if (layerTask.future.isDone()) {
+                        tasksIterator.remove();
+                        continue;
+                    }
+
+                    if (!layerTask.hasStarted) {
+                        layerTask.hasStarted = true;
+                        processLayer_processTask(layerTask, futures);
+                    }
+                }
+
                 if (readLayer.tasks.isEmpty()) {
                     fileData.layers.remove(0);
                     processLayerTask.complete(null);
                     return;
                 }
-                for (var layerTask : readLayer.tasks) {
-                    processLayer_processTask(layerTask, futures);
-                }
-                readLayer.tasks.clear();
 
                 Futures.allOf(futures).thenRun(() -> processLayer(processLayerTask, fileData));
             } else if (layer instanceof WriteLayer writeLayer) {
@@ -65,7 +82,9 @@ public class FileTaskQueue<K> {
                     fileData.layers.remove(0);
                     processLayerTask.complete(null);
                 }));
+                writeLayer.task.hasStarted = true;
                 processLayer_processTask(writeLayer.task);
+
             } else {
                 throw new AssertionError();
             }
@@ -95,10 +114,10 @@ public class FileTaskQueue<K> {
             if (lastLayer == null || lastLayer instanceof WriteLayer) {
                 lastLayer = new ReadLayer();
                 fileData.layers.add(lastLayer);
-                fileData.taskQueue.<Void>runSuspend(task -> processLayer(task, fileData));
             }
 
             ((ReadLayer) lastLayer).tasks.add(new Task<>(fn, masterFuture));
+            fileData.taskQueue.<Void>runSuspend(task -> processLayer(task, fileData));
         });
 
         return masterFuture;
@@ -116,5 +135,19 @@ public class FileTaskQueue<K> {
         });
 
         return masterFuture;
+    }
+
+    public CompletableFuture<Void> runReading(K key, Runnable fn) {
+        return runSuspendReading(key, task -> {
+            fn.run();
+            task.complete(null);
+        });
+    }
+
+    public CompletableFuture<Void> runWriting(K key, Runnable fn) {
+        return runSuspendWriting(key, task -> {
+            fn.run();
+            task.complete(null);
+        });
     }
 }

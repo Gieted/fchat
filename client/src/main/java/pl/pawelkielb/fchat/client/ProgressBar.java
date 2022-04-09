@@ -2,7 +2,7 @@ package pl.pawelkielb.fchat.client;
 
 // \ =>              |5%
 public class ProgressBar {
-    private final static int length = 20;
+    private final static int length = 40;
     private final static double spinnerRotationsPerSecond = 8;
 
     private final Console console;

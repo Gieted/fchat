@@ -211,15 +211,9 @@ public class Database {
     private final FileTaskQueue<UUID> fileCreationTaskQueue = new FileTaskQueue<>();
     private final FileTaskQueue<Path> fileTaskQueue = new FileTaskQueue<>();
 
-    public record SaveFileControl(Observable<Void> readyEvent, CompletableFuture<String> completion) {
-        public SaveFileControl() {
-            this(new Observable<>(), new CompletableFuture<>());
-        }
-    }
-
-    public SaveFileControl saveFile(UUID channel, String nameProposition, Observable<byte[]> bytes) {
+    public CompletableFuture<String> saveFile(UUID channel, String nameProposition, AsyncStream<Integer, byte[]> file) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
-        SaveFileControl saveFileControl = new SaveFileControl();
 
         fileCreationTaskQueue.<Void>runSuspendWriting(channel, fileCreationTask -> ioThreads.execute(r(() -> {
             Files.createDirectories(filesDirectory);
@@ -232,18 +226,15 @@ public class Database {
 
                     final String fileNameFinal = fileName;
 
-                    fileTaskQueue.runSuspendWriting(filePath, task -> {
-                        saveFileControl.readyEvent.onNext(null);
-                        bytes.subscribe(c(nextBytes -> {
-                            output.write(nextBytes);
-                            saveFileControl.readyEvent.onNext(null);
-                        }), r(() -> {
-                            logger.info("Saved file: " + fileNameFinal);
-                            output.close();
-                            task.complete(null);
-                            saveFileControl.completion.complete(fileNameFinal);
-                        }));
-                    });
+                    fileTaskQueue.runSuspendWriting(filePath, task -> file.subscribe(1000, c(nextBytes -> {
+                        output.write(nextBytes);
+                        file.requestNext(1000);
+                    }), r(() -> {
+                        logger.info("Saved file: " + fileNameFinal);
+                        output.close();
+                        task.complete(null);
+                        future.complete(fileNameFinal);
+                    }), future::completeExceptionally));
 
                     fileCreationTask.complete(null);
                     break;
@@ -253,44 +244,51 @@ public class Database {
             }
         })));
 
-        return saveFileControl;
+        return future;
     }
 
-    public record GetFileResult(Observable<byte[]> bytes, CompletableFuture<Long> size) {
-        public GetFileResult() {
-            this(new Observable<>(), new CompletableFuture<>());
-        }
-    }
-
-    public GetFileResult getFile(UUID channel, String name, Observable<Integer> bytesRequests) {
-        GetFileResult result = new GetFileResult();
+    public AsyncStream<Integer, byte[]> getFile(UUID channel, String name) {
+        Observable<Integer> producer = new Observable<>();
+        Observable<byte[]> consumer = new Observable<>();
         Path path = messagesDirectory.resolve(channel.toString()).resolve("files").resolve(name);
 
-        fileCreationTaskQueue.runSuspendReading(channel, fileCreationTask ->
+        fileCreationTaskQueue.runReading(channel, () ->
                 fileTaskQueue.runSuspendReading(path, c(fileTask -> {
-                    // need to synchronize with fileCreationTaskQueue only to obtain fileTaskQueue
-                    fileCreationTask.complete(null);
-
                     try {
-                        long size = Files.size(path);
-                        result.size.complete(size);
-
                         var inputStream = Files.newInputStream(path);
-                        bytesRequests.subscribe(byteCount -> {
+                        producer.subscribe(byteCount -> {
                             try {
                                 byte[] nextBytes = inputStream.readNBytes(byteCount);
                                 if (nextBytes.length == 0) {
                                     fileTask.complete(null);
-                                    result.bytes.complete();
+                                    consumer.complete();
                                 } else {
-                                    result.bytes.onNext(nextBytes);
+                                    consumer.onNext(nextBytes);
                                 }
                             } catch (IOException e) {
-                                result.bytes.onException(e);
+                                consumer.onException(e);
                             }
                         });
                     } catch (IOException e) {
-                        result.bytes.onException(e);
+                        consumer.onException(e);
+                    }
+                })));
+
+        return new AsyncStream<>(producer, consumer);
+    }
+
+    public CompletableFuture<Long> getFileSize(UUID channel, String name) {
+        CompletableFuture<Long> result = new CompletableFuture<>();
+        Path path = messagesDirectory.resolve(channel.toString()).resolve("files").resolve(name);
+
+        fileCreationTaskQueue.runReading(channel, () ->
+                fileTaskQueue.runSuspendReading(path, task -> ioThreads.execute(() -> {
+                    try {
+                        long size = Files.size(path);
+                        task.complete(null);
+                        result.complete(size);
+                    } catch (IOException e) {
+                        result.completeExceptionally(e);
                     }
                 })));
 

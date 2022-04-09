@@ -79,39 +79,47 @@ public class ClientHandler {
             });
 
         } else if (packet instanceof SendFilePacket sendFilePacket) {
-            Observable<byte[]> fileBytes = new Observable<>();
-            Database.SaveFileControl saveFileControl = database.saveFile(sendFilePacket.channel(), sendFilePacket.name(), fileBytes);
+            Observable<Integer> producer = new Observable<>();
+            Observable<byte[]> consumer = new Observable<>();
+
+            var saveFileFuture = database.saveFile(
+                    sendFilePacket.channel(),
+                    sendFilePacket.name(),
+                    new AsyncStream<>(producer, consumer)
+            );
+
             AtomicLong totalSize = new AtomicLong(0);
-            saveFileControl.readyEvent().subscribe(c(() -> {
+            producer.subscribe(c(() -> {
                 connection.sendPacket(null);
                 connection.readBytes().thenAccept(nextBytes -> {
                     totalSize.addAndGet(nextBytes.length);
                     if (nextBytes.length != 0) {
-                        fileBytes.onNext(nextBytes);
+                        consumer.onNext(nextBytes);
                     } else {
-                        fileBytes.complete();
+                        consumer.complete();
                     }
                 });
             }));
-            saveFileControl.completion().thenAccept(fileName -> {
+
+            saveFileFuture.thenAccept(fileName -> {
                 messageManager.pushMessage(sendFilePacket.channel(), new Message(username,
                         String.format("*file %s (%d bytes)*", fileName, totalSize.get())));
                 handlePacketFuture.complete(null);
             });
 
         } else if (packet instanceof RequestFilePacket requestFilePacket) {
-            Observable<Integer> byteRequests = new Observable<>();
-            Database.GetFileResult file = database.getFile(requestFilePacket.channel(), requestFilePacket.name(), byteRequests);
-            file.bytes().subscribe(nextBytes -> {
-                connection.sendBytes(nextBytes);
-                connection.readPacket().thenRun(() -> byteRequests.onNext(1000));
-            }, () -> {
-                connection.sendPacket(null);
-                handlePacketFuture.complete(null);
-            });
-            file.size().thenAccept(size -> {
+
+            database.getFileSize(requestFilePacket.channel(), requestFilePacket.name()).thenAccept(size -> {
                 connection.sendPacket(new SendFilePacket(requestFilePacket.channel(), requestFilePacket.name(), size));
-                byteRequests.onNext(1000);
+
+                var file = database.getFile(requestFilePacket.channel(), requestFilePacket.name());
+                file.subscribe(1000000, nextBytes -> {
+                    connection.sendBytes(nextBytes);
+                    connection.readPacket().thenRun(() -> file.requestNext(1000000));
+                }, () -> {
+                    connection.sendBytes(new byte[0]);
+                    handlePacketFuture.complete(null);
+                }, handlePacketFuture::completeExceptionally);
             });
 
         } else {

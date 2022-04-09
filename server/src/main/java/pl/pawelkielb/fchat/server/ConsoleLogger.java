@@ -17,6 +17,9 @@ public class ConsoleLogger implements Logger {
 
     @Override
     public void info(String message) {
-        ioThreads.execute(() -> System.out.printf("%d: %s\n", i++, message));
+        taskQueue.runSuspend(task -> ioThreads.execute(() -> {
+            System.out.printf("%d: %s\n", i++, message);
+            task.complete(null);
+        }));
     }
 }

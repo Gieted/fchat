@@ -209,6 +209,7 @@ public class Client {
                 do {
                     nextBytes = connection.readBytes().get();
                     output.write(nextBytes);
+                    bytesWritten += nextBytes.length;
                     progressConsumer.accept(((double) bytesWritten) / fileSize);
 
                     if (nextBytes.length != 0) {
