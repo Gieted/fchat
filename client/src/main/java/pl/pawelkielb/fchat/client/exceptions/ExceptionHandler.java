@@ -6,6 +6,7 @@ import pl.pawelkielb.fchat.client.Database;
 import pl.pawelkielb.fchat.client.Main;
 
 import java.io.IOException;
+import java.net.ProtocolException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,6 +92,18 @@ public abstract class ExceptionHandler {
         checkDevMode(e);
         printError(getExceptionMessage("Illegal name provided", e));
         System.exit(14);
+    }
+
+    public static void onProtocolException(ProtocolException e) {
+        checkDevMode(e);
+        printError(getExceptionMessage("Protocol error", e));
+        System.exit(15);
+    }
+
+    public static void onNoSuchFile(Exception e) {
+        checkDevMode(e);
+        printError("No such file: " + e.getMessage());
+        System.exit(16);
     }
 
     public static void onUnknownException(Exception e) {

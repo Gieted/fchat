@@ -9,10 +9,15 @@ import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 
 import java.io.IOException;
+import java.net.ProtocolException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
+
+import static pl.pawelkielb.fchat.Exceptions.throwAsUnchecked;
 
 
 public abstract class Commands {
@@ -156,7 +161,9 @@ public abstract class Commands {
 
                 Path path = Paths.get(args.get(0));
                 ProgressBar progressBar = new ProgressBar(console);
+
                 doNetwork(() -> client.sendFile(channelConfig.id(), path, progressBar::update));
+
                 console.updateLine("");
             }
 
@@ -172,7 +179,18 @@ public abstract class Commands {
 
                 String fileName = args.get(0);
                 ProgressBar progressBar = new ProgressBar(console);
-                doNetwork(() -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), progressBar::update));
+
+                doNetwork(
+                        () -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), progressBar::update),
+                        e -> {
+                            if (e instanceof NoSuchFileException) {
+                                ExceptionHandler.onNoSuchFile(e);
+                            } else {
+                                throwAsUnchecked(e);
+                            }
+                        }
+                );
+
                 console.updateLine("");
             }
 
@@ -184,13 +202,27 @@ public abstract class Commands {
         console.println(String.format("%s: %s", message.author(), message.content()));
     }
 
-    private static void doNetwork(Exceptions.Runnable_WithExceptions<IOException> runnable) {
+    private static void doNetwork(Exceptions.Runnable_WithExceptions<IOException> runnable,
+                                  Consumer<Exception> exceptionHandler) {
+
         try {
             runnable.run();
+        } catch (NoSuchFileException e) {
+            if (exceptionHandler != null) {
+                exceptionHandler.accept(e);
+            } else {
+                throwAsUnchecked(e);
+            }
+        } catch (ProtocolException e) {
+            ExceptionHandler.onProtocolException(e);
         } catch (IOException e) {
             ExceptionHandler.onNetworkException(e);
         } catch (DisconnectedException e) {
             ExceptionHandler.onServerDisconnected(e);
         }
+    }
+
+    private static void doNetwork(Exceptions.Runnable_WithExceptions<IOException> runnable) {
+        doNetwork(runnable, null);
     }
 }

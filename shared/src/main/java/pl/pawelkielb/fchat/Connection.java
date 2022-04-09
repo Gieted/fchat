@@ -57,6 +57,77 @@ public class Connection {
         this.logger = logger;
     }
 
+    public static class NetworkException extends RuntimeException {
+    }
+
+    /**
+     * @param bytes an array of bytes to send
+     * @return a future that'll complete when all bytes will be sent.
+     * Might complete exceptionally with the following exceptions:
+     * <li>NetworkException - if network fails
+     * <li>DisconnectedException - if the other party disconnects
+     */
+    public CompletableFuture<Void> sendBytes(byte[] bytes) {
+        return taskQueue.runSuspend(task -> sendBytesInternal(bytes).thenRun(() -> {
+            logger.info(String.format("Sent %d bytes", bytes.length));
+            task.complete(null);
+        }).exceptionally(vf(task::completeExceptionally)));
+    }
+
+    /**
+     * @return a future resolving to read bytes.
+     * Might complete exceptionally with the following exceptions:
+     * <li>NetworkException - if network fails
+     * <li>DisconnectedException - if the other party disconnects
+     */
+    public CompletableFuture<byte[]> readBytes() {
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
+        readBytesInternal().thenAccept(bytes -> {
+            logger.info(String.format("Received %d bytes", bytes.length));
+            future.complete(bytes);
+        }).exceptionally(vf(future::completeExceptionally));
+
+        return future;
+    }
+
+    public CompletableFuture<Void> sendPacket(Packet packet) {
+        return taskQueue.runSuspend(task -> {
+            if (packet == null) {
+                sendBytesInternal(nullPacket).thenRun(() -> {
+                    logger.info("Sent packet: null");
+                    task.complete(null);
+                }).exceptionally(vf(task::completeExceptionally));
+            } else {
+                workerThreads.execute(() -> {
+                    byte[] packetBytes = packetEncoder.toBytes(packet);
+                    sendBytesInternal(packetBytes).thenRun(() -> {
+                        logger.info("Sent packet: " + packet);
+                        task.complete(null);
+                    }).exceptionally(vf(task::completeExceptionally));
+                });
+            }
+        });
+    }
+
+    public CompletableFuture<Packet> readPacket() {
+        CompletableFuture<Packet> future = new CompletableFuture<>();
+        readBytesInternal().thenAccept(bytes -> {
+            if (bytes.length == 0) {
+                logger.info("Received packet: null");
+                future.complete(null);
+                return;
+            }
+
+            workerThreads.execute(() -> {
+                Packet packet = packetEncoder.decode(bytes);
+                logger.info("Received packet: " + packet);
+                future.complete(packet);
+            });
+        }).exceptionally(vf(future::completeExceptionally));
+
+        return future;
+    }
+
     private static int intFromBytes(byte[] bytes) {
         return ByteBuffer.wrap(bytes).getInt();
     }
@@ -122,61 +193,6 @@ public class Connection {
                 future.completeExceptionally(new DisconnectedException());
             }
         }));
-
-        return future;
-    }
-
-    public CompletableFuture<Void> sendBytes(byte[] bytes) {
-        return taskQueue.runSuspend(task -> sendBytesInternal(bytes).thenRun(() -> {
-            logger.info(String.format("Sent %d bytes", bytes.length));
-            task.complete(null);
-        }).exceptionally(vf(task::completeExceptionally)));
-    }
-
-    public CompletableFuture<byte[]> readBytes() {
-        CompletableFuture<byte[]> future = new CompletableFuture<>();
-        readBytesInternal().thenAccept(bytes -> {
-            logger.info(String.format("Received %d bytes", bytes.length));
-            future.complete(bytes);
-        }).exceptionally(vf(future::completeExceptionally));
-        
-        return future;
-    }
-
-    public CompletableFuture<Void> sendPacket(Packet packet) {
-        return taskQueue.runSuspend(task -> {
-            if (packet == null) {
-                sendBytesInternal(nullPacket).thenRun(() -> {
-                    logger.info("Sent packet: null");
-                    task.complete(null);
-                }).exceptionally(vf(task::completeExceptionally));
-            } else {
-                workerThreads.execute(() -> {
-                    byte[] packetBytes = packetEncoder.toBytes(packet);
-                    sendBytesInternal(packetBytes).thenRun(() -> {
-                        logger.info("Sent packet: " + packet);
-                        task.complete(null);
-                    }).exceptionally(vf(task::completeExceptionally));
-                });
-            }
-        });
-    }
-
-    public CompletableFuture<Packet> readPacket() {
-        CompletableFuture<Packet> future = new CompletableFuture<>();
-        readBytesInternal().thenAccept(bytes -> {
-            if (bytes.length == 0) {
-                logger.info("Received packet: null");
-                future.complete(null);
-                return;
-            }
-
-            workerThreads.execute(() -> {
-                Packet packet = packetEncoder.decode(bytes);
-                logger.info("Received packet: " + packet);
-                future.complete(packet);
-            });
-        }).exceptionally(vf(future::completeExceptionally));
 
         return future;
     }

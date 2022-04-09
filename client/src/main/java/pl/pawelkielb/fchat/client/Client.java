@@ -215,18 +215,21 @@ public class Client {
         }
     }
 
+    public static class CannotFindFile extends RuntimeException {
+    }
+
     /**
      * @param channel              an uuid of a channel from which you want to download the file
      * @param name                 a name of the file to download
      * @param destinationDirectory a directory the file will be saved to
      * @param progressConsumer     a callback function, that'll be called to report the download progress.
      *                             Its parameter is a value from 0.0 to 1.0.
-     * @throws IOException           if network fails
-     * @throws ProtocolException     if the server does something unexpected
-     * @throws DisconnectedException if the server disconnects
-     * @throws NotDirectoryException if provided directory does not exist
-     * @throws NoSuchFileException   if there is no file with such a name in the channel
-     * @throws FileWriteException    if saving the file fails
+     * @throws Connection.NetworkException if network fails
+     * @throws ProtocolException           if the server does something unexpected
+     * @throws DisconnectedException       if the server disconnects
+     * @throws NotDirectoryException       if provided directory does not exist
+     * @throws CannotFindFile              if there is no file with such a name in the channel
+     * @throws FileWriteException          if saving the file fails
      */
     public void downloadFile(UUID channel, String name, Path destinationDirectory, Consumer<Double> progressConsumer)
             throws NotDirectoryException,

@@ -7,6 +7,7 @@ import pl.pawelkielb.fchat.data.Name;
 import pl.pawelkielb.fchat.packets.*;
 
 import java.net.ProtocolException;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -121,10 +122,14 @@ public class ClientHandler {
                     connection.sendBytes(new byte[0]);
                     handlePacketFuture.complete(null);
                 }, handlePacketFuture::completeExceptionally);
-            }).exceptionally(throwable -> {
-                handlePacketFuture.completeExceptionally(throwable);
-                return null;
-            });
+            }).exceptionally(vf(throwable -> {
+                if (throwable.getCause() instanceof NoSuchFileException) {
+                    connection.sendPacket(null);
+                    handlePacketFuture.complete(null);
+                } else {
+                    handlePacketFuture.completeExceptionally(throwable);
+                }
+            }));
 
         } else {
             handlePacketFuture.complete(null);
