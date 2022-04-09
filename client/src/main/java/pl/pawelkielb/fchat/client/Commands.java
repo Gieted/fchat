@@ -14,21 +14,8 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+
 public abstract class Commands {
-    private static void printMessage(Console console, Message message) {
-        console.println(String.format("%s: %s", message.author(), message.content()));
-    }
-
-    private static void doNetwork(Exceptions.Runnable_WithExceptions<IOException> runnable) {
-        try {
-            runnable.run();
-        } catch (IOException e) {
-            ExceptionHandler.onNetworkException(e);
-        } catch (DisconnectedException e) {
-            ExceptionHandler.onServerDisconnected();
-        }
-    }
-
     public static void execute(String command,
                                List<String> args,
                                ClientConfig clientConfig,
@@ -44,29 +31,31 @@ public abstract class Commands {
                 ExceptionHandler.onAlreadyInitialized();
             }
 
+            ClientConfig defaultClientConfig = ClientConfig.defaults();
             try {
-                ClientConfig defaultClientConfig = ClientConfig.defaults();
                 database.saveClientConfig(defaultClientConfig);
+                return;
             } catch (FileWriteException e) {
                 ExceptionHandler.onCannotWriteFile(e.getPath());
+                throw new AssertionError();
             }
-
-            return;
         }
 
+        // other commands require client config
         if (clientConfig == null) {
             ExceptionHandler.onCannotFindClientConfig();
-            return;
+            throw new AssertionError();
         }
 
-        Path rootPath;
+        Path logsPath;
         if (channelConfig == null) {
-            rootPath = Paths.get("logs.txt");
+            logsPath = Paths.get("logs.txt");
         } else {
-            rootPath = Paths.get("..", "logs.txt");
+            logsPath = Paths.get("..", "logs.txt");
         }
 
-        Logger logger = new FileLogger(rootPath, applicationExitEvent);
+        Logger logger = new FileLogger(logsPath, applicationExitEvent);
+
         Connection connection = new Connection(
                 packetEncoder,
                 clientConfig.serverHost(),
@@ -82,7 +71,7 @@ public abstract class Commands {
         switch (command) {
             case "create" -> {
                 if (args.size() == 0) {
-                    ExceptionHandler.onIllegalArgument("Please provide a channel name");
+                    ExceptionHandler.onMissingArgument("Please provide a channel name");
                 }
 
                 Name channelName;
@@ -120,7 +109,7 @@ public abstract class Commands {
 
             case "send" -> {
                 if (args.size() < 1) {
-                    ExceptionHandler.onMessageNotProvided();
+                    ExceptionHandler.onMissingArgument("Please provide a message");
                     return;
                 }
 
@@ -188,6 +177,20 @@ public abstract class Commands {
                 doNetwork(() -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), progressBar::update));
                 console.updateLine("");
             }
+        }
+    }
+
+    private static void printMessage(Console console, Message message) {
+        console.println(String.format("%s: %s", message.author(), message.content()));
+    }
+
+    private static void doNetwork(Exceptions.Runnable_WithExceptions<IOException> runnable) {
+        try {
+            runnable.run();
+        } catch (IOException e) {
+            ExceptionHandler.onNetworkException(e);
+        } catch (DisconnectedException e) {
+            ExceptionHandler.onServerDisconnected();
         }
     }
 }

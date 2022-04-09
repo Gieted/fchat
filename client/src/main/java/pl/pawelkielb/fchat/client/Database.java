@@ -34,7 +34,7 @@ public class Database {
     }
 
     public static final String clientConfigFileName = "fchat.properties";
-    public static final String channelConfigFileName = "channel.properties";
+    public static final String channelProperties = "channel.properties";
 
     public static String sanitizeAsPath(String string) {
         return string.replaceAll("[^0-9a-zA-z ]", "");
@@ -124,7 +124,7 @@ public class Database {
         Path configPath;
         while (true) {
             directoryPath = rootDirectory.resolve(directoryName);
-            configPath = directoryPath.resolve(channelConfigFileName);
+            configPath = directoryPath.resolve(channelProperties);
             try {
                 Files.createDirectory(directoryPath);
                 break;

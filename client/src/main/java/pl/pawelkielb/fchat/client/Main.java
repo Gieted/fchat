@@ -11,18 +11,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+
 public class Main {
     public static final boolean DEV_MODE = System.getProperty("DEV_MODE") != null;
-
-    private static ClientConfig getClientConfigCatching(Database database) {
-        try {
-            return database.getClientConfig();
-        } catch (Database.InvalidConfigException e) {
-            ExceptionHandler.onInvalidClientConfig(e);
-        }
-
-        throw new AssertionError();
-    }
 
     public static void main(String[] args) {
         try {
@@ -43,20 +34,17 @@ public class Main {
             }
 
             Database database = new Database(Paths.get("."));
-
-            ClientConfig clientConfig;
             ChannelConfig channelConfig = null;
-
-            clientConfig = getClientConfigCatching(database);
-
+            ClientConfig clientConfig = getClientConfigCatching(database);
 
             if (clientConfig == null) {
                 try {
-                    channelConfig = Database.readChannelConfig(Paths.get("channel.properties"));
+                    channelConfig = Database.readChannelConfig(Paths.get(Database.channelProperties));
                 } catch (Database.InvalidConfigException e) {
                     ExceptionHandler.onInvalidChannelConfig(e);
                 }
 
+                // don't change database root when channel.properties is not present in current directory
                 if (channelConfig != null) {
                     database = new Database(Paths.get(".."));
                     clientConfig = getClientConfigCatching(database);
@@ -85,6 +73,17 @@ public class Main {
             applicationExitEvent.onNext(null);
         } catch (Exception e) {
             ExceptionHandler.onUnknownException(e);
+        }
+    }
+
+    private static ClientConfig getClientConfigCatching(Database database) {
+        try {
+            return database.getClientConfig();
+        } catch (Database.InvalidConfigException e) {
+            ExceptionHandler.onInvalidClientConfig(e);
+
+            // reaching this line is impossible because ExceptionHandler methods call System.exit()
+            throw new AssertionError();
         }
     }
 }
