@@ -13,6 +13,7 @@ import pl.pawelkielb.fchat.packets.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ProtocolException;
 import java.nio.file.*;
 import java.util.Iterator;
@@ -255,29 +256,43 @@ public class Client {
         long bytesWritten = 0;
 
         var filename = name;
-        Path filePath;
-        while (true) {
+        Path filePath = null;
+        OutputStream output = null;
+
+        // find unused file name
+        while (output == null) {
             filePath = destinationDirectory.resolve(filename);
 
-            try (var output = Files.newOutputStream(filePath)) {
-                while (true) {
-                    var nextBytes = doSync(connection::readBytes);
-                    output.write(nextBytes);
-                    bytesWritten += nextBytes.length;
-                    progressConsumer.accept(((double) bytesWritten) / fileSize);
-
-                    if (nextBytes.length != 0) {
-                        doSync(() -> connection.sendPacket(null));
-                    } else {
-                        break;
-                    }
-                }
-                break;
+            try {
+                output = Files.newOutputStream(filePath, StandardOpenOption.CREATE);
             } catch (FileAlreadyExistsException e) {
                 filename = StringUtils.incrementFileName(filename);
             } catch (IOException e) {
                 throw new FileWriteException(filePath, e);
             }
+        }
+
+        while (true) {
+            var nextBytes = doSync(connection::readBytes);
+            try {
+                output.write(nextBytes);
+            } catch (IOException e) {
+                throw new FileWriteException(filePath, e);
+            }
+            bytesWritten += nextBytes.length;
+            progressConsumer.accept(((double) bytesWritten) / fileSize);
+
+            if (nextBytes.length != 0) {
+                doSync(() -> connection.sendPacket(null));
+            } else {
+                break;
+            }
+        }
+
+        try {
+            output.close();
+        } catch (IOException e) {
+            throw new FileWriteException(filePath, e);
         }
     }
 
