@@ -34,11 +34,11 @@ public class Client {
     }
 
     /**
-     * Downloads updates from a server and applies them to the database.
+     * Downloads updates from the server and applies them to the database.
      *
      * @throws IOException           if network fails
-     * @throws ProtocolException     if server does something unexpected
-     * @throws DisconnectedException if server disconnects
+     * @throws ProtocolException     if the server does something unexpected
+     * @throws DisconnectedException if the server disconnects
      * @throws FileWriteException    if saving updates fails
      */
     public void sync() throws ProtocolException {
@@ -63,21 +63,21 @@ public class Client {
     }
 
     /**
-     * @param recipient a username of one you want to chat with
+     * @param recipient username of a user you want to chat with
      * @throws IOException           if network fails
-     * @throws ProtocolException     if server does something unexpected
-     * @throws DisconnectedException if server disconnects
+     * @throws ProtocolException     if the server does something unexpected
+     * @throws DisconnectedException if the server disconnects
      */
     public void createPrivateChannel(Name recipient) throws ProtocolException {
-        createGroupChannel(recipient, List.of(recipient));
+        createGroupChannel(null, List.of(recipient));
     }
 
     /**
-     * @param name    name of the channel
+     * @param name    a name of the channel. If a null is provided the name will be decided by the server.
      * @param members a list of usernames of users who should be participants of this channel
      * @throws IOException           if network fails
-     * @throws ProtocolException     if server does something unexpected
-     * @throws DisconnectedException if server disconnects
+     * @throws ProtocolException     if the server does something unexpected
+     * @throws DisconnectedException if the server disconnects
      */
     public void createGroupChannel(Name name, List<Name> members) throws ProtocolException {
         login();
@@ -89,11 +89,11 @@ public class Client {
     }
 
     /**
-     * @param channel uuid of a channel you want to send the message to
+     * @param channel an uuid of a channel you want to send the message to
      * @param message a message to send
      * @throws IOException           if network fails
-     * @throws ProtocolException     if server does something unexpected
-     * @throws DisconnectedException if server disconnects
+     * @throws ProtocolException     if the server does something unexpected
+     * @throws DisconnectedException if the server disconnects
      */
     public void sendMessage(UUID channel, Message message) {
         login();
@@ -107,12 +107,12 @@ public class Client {
     }
 
     /**
-     * @param channel uuid of a channel from which you want to read messages
+     * @param channel an uuid of a channel from which you want to read the messages
      * @param count   a count of messages to read
      * @return a stream of read messages
      * @throws IOException           if network fails
-     * @throws ProtocolException     if server does something unexpected
-     * @throws DisconnectedException if server disconnects
+     * @throws ProtocolException     if the server does something unexpected
+     * @throws DisconnectedException if the server disconnects
      */
     public Stream<Message> readMessages(UUID channel, int count) {
         login();
@@ -173,14 +173,14 @@ public class Client {
     }
 
     /**
-     * @param channel          uuid of a channel you want to send a file to
+     * @param channel          an uuid of a channel you want to send the file to
      * @param path             path of a file you want to send
-     * @param progressConsumer A callback function, that'll be called to report the upload progress.
+     * @param progressConsumer a callback function, that'll be called to report the upload progress.
      *                         Its parameter is a value from 0.0 to 1.0.
      * @throws IOException           if network fails
-     * @throws ProtocolException     if server does something unexpected
-     * @throws DisconnectedException if server disconnects
-     * @throws NotFileException      if path's target is not a file
+     * @throws ProtocolException     if the server does something unexpected
+     * @throws DisconnectedException if the server disconnects
+     * @throws NotFileException      if the path's target is not a file
      */
     public void sendFile(UUID channel, Path path, Consumer<Double> progressConsumer) throws IOException {
         if (!Files.isRegularFile(path)) {
@@ -212,16 +212,16 @@ public class Client {
     }
 
     /**
-     * @param channel              uuid of a channel from which you want to download a file
-     * @param name                 name of the file to download
+     * @param channel              an uuid of a channel from which you want to download the file
+     * @param name                 a name of the file to download
      * @param destinationDirectory a directory the file will be saved to
-     * @param progressConsumer     A callback function, that'll be called to report the download progress.
+     * @param progressConsumer     a callback function, that'll be called to report the download progress.
      *                             Its parameter is a value from 0.0 to 1.0.
      * @throws IOException           if network fails
-     * @throws ProtocolException     if server does something unexpected
-     * @throws DisconnectedException if server disconnects
+     * @throws ProtocolException     if the server does something unexpected
+     * @throws DisconnectedException if the server disconnects
      * @throws NotDirectoryException if provided directory does not exist
-     * @throws NoSuchFileException   if there is no file with such name in the channel
+     * @throws NoSuchFileException   if there is no file with such a name in the channel
      */
     public void downloadFile(UUID channel, String name, Path destinationDirectory, Consumer<Double> progressConsumer) throws
             NotDirectoryException,
