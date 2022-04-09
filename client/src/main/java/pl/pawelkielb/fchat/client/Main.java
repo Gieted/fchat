@@ -11,6 +11,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import static pl.pawelkielb.fchat.client.Database.readChannelConfig;
+
 
 public class Main {
     public static final boolean DEV_MODE = System.getProperty("DEV_MODE") != null;
@@ -39,7 +41,7 @@ public class Main {
 
             if (clientConfig == null) {
                 try {
-                    channelConfig = Database.readChannelConfig(Paths.get(Database.channelProperties));
+                    channelConfig = readChannelConfig(Paths.get(Database.channelProperties));
                 } catch (Database.InvalidConfigException e) {
                     ExceptionHandler.onInvalidChannelConfig(e);
                 }

@@ -5,6 +5,7 @@ import pl.pawelkielb.fchat.DisconnectedException;
 import pl.pawelkielb.fchat.StringUtils;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
+import pl.pawelkielb.fchat.client.exceptions.FileReadException;
 import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
@@ -14,11 +15,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.ProtocolException;
 import java.nio.file.*;
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import java.util.function.Supplier;
+
+import static pl.pawelkielb.fchat.Exceptions.throwAsUnchecked;
+import static pl.pawelkielb.fchat.TransferSettings.fileChunkSize;
 
 
 public class Client {
@@ -44,17 +51,17 @@ public class Client {
     public void sync() throws ProtocolException {
         login();
 
-        connection.sendPacket(new RequestUpdatesPacket());
+        doSync(() -> connection.sendPacket(new RequestUpdatesPacket()));
 
         while (true) {
-            Packet packet = readSync();
+            var packet = doSync(connection::readPacket);
 
             if (packet == null) {
                 break;
             }
 
             if (packet instanceof ChannelUpdatedPacket channelUpdatedPacket) {
-                ChannelConfig channelConfig = new ChannelConfig(channelUpdatedPacket.channel());
+                var channelConfig = new ChannelConfig(channelUpdatedPacket.channel());
                 database.saveChannel(channelUpdatedPacket.name(), channelConfig);
             } else {
                 throw new ProtocolException();
@@ -82,9 +89,9 @@ public class Client {
     public void createGroupChannel(Name name, List<Name> members) throws ProtocolException {
         login();
 
-        UUID channelId = UUID.randomUUID();
-        UpdateChannelPacket updateChannelPacket = new UpdateChannelPacket(channelId, name, members);
-        connection.sendPacket(updateChannelPacket);
+        var channelId = UUID.randomUUID();
+        var updateChannelPacket = new UpdateChannelPacket(channelId, name, members);
+        doSync(() -> connection.sendPacket(updateChannelPacket));
         sync();
     }
 
@@ -98,51 +105,47 @@ public class Client {
     public void sendMessage(UUID channel, Message message) {
         login();
 
-        SendMessagePacket sendMessagePacket = new SendMessagePacket(
-                channel,
-                message
-        );
-
-        connection.sendPacket(sendMessagePacket);
+        var sendMessagePacket = new SendMessagePacket(channel, message);
+        doSync(() -> connection.sendPacket(sendMessagePacket));
     }
 
     /**
      * @param channel an uuid of a channel from which you want to read the messages
      * @param count   a count of messages to read
-     * @return a stream of read messages
+     * @return an iterable of read messages.
+     * Calling it's next() and hasNext() might produce the same exceptions as this method call.
      * @throws IOException           if network fails
      * @throws ProtocolException     if the server does something unexpected
      * @throws DisconnectedException if the server disconnects
      */
-    public Stream<Message> readMessages(UUID channel, int count) {
+    public Iterable<Message> readMessages(UUID channel, int count) {
         login();
 
-        RequestMessagesPacket requestMessagesPacket = new RequestMessagesPacket(channel, count);
-        connection.sendPacket(requestMessagesPacket);
+        var requestMessagesPacket = new RequestMessagesPacket(channel, count);
+        doSync(() -> connection.sendPacket(requestMessagesPacket));
 
-        Iterator<Message> iterator = new Iterator<Message>() {
+        var iterator = new Iterator<Message>() {
             boolean finished = false;
             Message nextMessage = null;
 
             void getNext() {
-                while (true) {
-                    Packet packet = readSync();
+                var packet = doSync(connection::readPacket);
 
-                    if (packet == null) {
-                        finished = true;
-                        break;
-                    }
+                if (packet == null) {
+                    finished = true;
+                    return;
+                }
 
-                    if (packet instanceof SendMessagePacket sendMessagePacket) {
-                        nextMessage = sendMessagePacket.message();
-                        break;
-                    }
+                if (packet instanceof SendMessagePacket sendMessagePacket) {
+                    nextMessage = sendMessagePacket.message();
+                } else {
+                    throwAsUnchecked(new ProtocolException());
                 }
             }
 
             @Override
             public boolean hasNext() {
-                if (nextMessage == null) {
+                if (nextMessage == null && !finished) {
                     getNext();
                 }
 
@@ -159,28 +162,29 @@ public class Client {
                     getNext();
                 }
 
-                Message message = nextMessage;
+                var message = nextMessage;
                 nextMessage = null;
 
                 return message;
             }
         };
 
-        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false);
+        return () -> iterator;
     }
 
     public static class NotFileException extends RuntimeException {
     }
 
     /**
-     * @param channel          an uuid of a channel you want to send the file to
-     * @param path             path of a file you want to send
+     * @param channel          an uuid of the channel you want to send the file to
+     * @param path             a path of the file you want to send
      * @param progressConsumer a callback function, that'll be called to report the upload progress.
      *                         Its parameter is a value from 0.0 to 1.0.
      * @throws IOException           if network fails
      * @throws ProtocolException     if the server does something unexpected
      * @throws DisconnectedException if the server disconnects
      * @throws NotFileException      if the path's target is not a file
+     * @throws FileReadException     if reading the file fails
      */
     public void sendFile(UUID channel, Path path, Consumer<Double> progressConsumer) throws IOException {
         if (!Files.isRegularFile(path)) {
@@ -189,25 +193,24 @@ public class Client {
 
         login();
 
-        long totalSize = Files.size(path);
+        var totalSize = Files.size(path);
         long bytesSent = 0;
 
-
-        connection.sendPacket(new SendFilePacket(channel, path.getFileName().toString(), Files.size(path)));
+        var sendFilePacket = new SendFilePacket(channel, path.getFileName().toString(), Files.size(path));
+        doSync(() -> connection.sendPacket(sendFilePacket));
 
         try (InputStream inputStream = Files.newInputStream(path)) {
-            byte[] nextBytes;
-            do {
-                //noinspection StatementWithEmptyBody
-                while (readSync() != null) {
-                }
-                nextBytes = inputStream.readNBytes(1000000);
-                connection.sendBytes(nextBytes).get();
+            while (true) {
+                doSync(connection::readPacket);
+                var nextBytes = inputStream.readNBytes(fileChunkSize);
+                doSync(() -> connection.sendBytes(nextBytes));
                 bytesSent += nextBytes.length;
                 progressConsumer.accept(((double) bytesSent) / totalSize);
-            } while (nextBytes.length != 0);
-        } catch (ExecutionException | InterruptedException e) {
-            throw new AssertionError(e);
+
+                if (nextBytes.length == 0) {
+                    break;
+                }
+            }
         }
     }
 
@@ -222,9 +225,10 @@ public class Client {
      * @throws DisconnectedException if the server disconnects
      * @throws NotDirectoryException if provided directory does not exist
      * @throws NoSuchFileException   if there is no file with such a name in the channel
+     * @throws FileWriteException    if saving the file fails
      */
-    public void downloadFile(UUID channel, String name, Path destinationDirectory, Consumer<Double> progressConsumer) throws
-            NotDirectoryException,
+    public void downloadFile(UUID channel, String name, Path destinationDirectory, Consumer<Double> progressConsumer)
+            throws NotDirectoryException,
             NoSuchFileException,
             ProtocolException {
 
@@ -234,9 +238,8 @@ public class Client {
 
         login();
 
-        connection.sendPacket(new RequestFilePacket(channel, name));
-
-        Packet packet = readSync();
+        doSync(() -> connection.sendPacket(new RequestFilePacket(channel, name)));
+        var packet = doSync(connection::readPacket);
 
         if (packet == null) {
             throw new NoSuchFileException(name);
@@ -251,45 +254,47 @@ public class Client {
 
         long bytesWritten = 0;
 
-        String filename = name;
+        var filename = name;
         Path filePath;
         while (true) {
             filePath = destinationDirectory.resolve(filename);
-            try (var output = Files.newOutputStream(filePath)) {
-                byte[] nextBytes;
 
-                do {
-                    nextBytes = connection.readBytes().get();
+            try (var output = Files.newOutputStream(filePath)) {
+                while (true) {
+                    var nextBytes = doSync(connection::readBytes);
                     output.write(nextBytes);
                     bytesWritten += nextBytes.length;
                     progressConsumer.accept(((double) bytesWritten) / fileSize);
 
                     if (nextBytes.length != 0) {
-                        connection.sendPacket(null);
+                        doSync(() -> connection.sendPacket(null));
+                    } else {
+                        break;
                     }
-                } while (nextBytes.length != 0);
+                }
                 break;
             } catch (FileAlreadyExistsException e) {
                 filename = StringUtils.incrementFileName(filename);
-            } catch (ExecutionException | InterruptedException e) {
-                throw new AssertionError(e);
             } catch (IOException e) {
                 throw new FileWriteException(filePath, e);
             }
         }
     }
 
-    private Packet readSync() {
+    private <T> T doSync(Supplier<CompletableFuture<T>> fn) {
         try {
-            return connection.readPacket().get();
-        } catch (ExecutionException | InterruptedException e) {
-            throw new DisconnectedException();
+            return fn.get().get();
+        } catch (ExecutionException e) {
+            throwAsUnchecked(e.getCause());
+            throw new AssertionError(e);
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
         }
     }
 
     private void login() {
         if (!loggedIn) {
-            connection.sendPacket(new LoginPacket(clientConfig.username()));
+            doSync(() -> connection.sendPacket(new LoginPacket(clientConfig.username())));
             loggedIn = true;
         }
     }
