@@ -260,7 +260,7 @@ public class Database {
                             try {
                                 byte[] nextBytes = inputStream.readNBytes(byteCount);
                                 if (nextBytes.length == 0) {
-                                    fileTask.complete(null);
+                                    producer.complete();
                                     consumer.complete();
                                 } else {
                                     consumer.onNext(nextBytes);
@@ -269,6 +269,9 @@ public class Database {
                                 fileTask.complete(null);
                                 consumer.onException(e);
                             }
+                        }, () -> fileTask.complete(null), e -> {
+                            fileTask.complete(null);
+                            consumer.onException(e);
                         });
                     } catch (IOException e) {
                         fileTask.complete(null);

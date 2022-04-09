@@ -88,7 +88,7 @@ public abstract class Exceptions {
         };
     }
 
-    public static <T, E extends Exception> Function<T, Void> f(Consumer_WithExceptions<T, E> fn) {
+    public static <T, E extends Exception> Function<T, Void> vf(Consumer_WithExceptions<T, E> fn) {
         return (t) -> {
             try {
                 fn.accept(t);

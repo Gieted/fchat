@@ -25,4 +25,8 @@ public class AsyncStream<R, T> {
         consumer.subscribe(observer, completionListener, exceptionHandler);
         requestNext(initialRequest);
     }
+
+    public void close() {
+        producer.complete();
+    }
 }

@@ -11,8 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static pl.pawelkielb.fchat.Exceptions.c;
-import static pl.pawelkielb.fchat.Exceptions.r;
+import static pl.pawelkielb.fchat.Exceptions.*;
 
 public class Connection {
     private final PacketEncoder packetEncoder;
@@ -130,7 +129,7 @@ public class Connection {
         return taskQueue.runSuspend(task -> sendBytesInternal(bytes).thenRun(() -> {
             logger.info(String.format("Sent %d bytes", bytes.length));
             task.complete(null);
-        }));
+        }).exceptionally(vf(task::completeExceptionally)));
     }
 
     public CompletableFuture<byte[]> readBytes() {
@@ -138,7 +137,8 @@ public class Connection {
         readBytesInternal().thenAccept(bytes -> {
             logger.info(String.format("Received %d bytes", bytes.length));
             future.complete(bytes);
-        });
+        }).exceptionally(vf(future::completeExceptionally));
+        ;
 
         return future;
     }
@@ -149,14 +149,14 @@ public class Connection {
                 sendBytesInternal(nullPacket).thenRun(() -> {
                     logger.info("Sent packet: null");
                     task.complete(null);
-                });
+                }).exceptionally(vf(task::completeExceptionally));
             } else {
                 workerThreads.execute(() -> {
                     byte[] packetBytes = packetEncoder.toBytes(packet);
                     sendBytesInternal(packetBytes).thenRun(() -> {
                         logger.info("Sent packet: " + packet);
                         task.complete(null);
-                    });
+                    }).exceptionally(vf(task::completeExceptionally));
                 });
             }
         });
@@ -176,7 +176,7 @@ public class Connection {
                 logger.info("Received packet: " + packet);
                 future.complete(packet);
             });
-        });
+        }).exceptionally(vf(future::completeExceptionally));
 
         return future;
     }

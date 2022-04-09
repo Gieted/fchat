@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static pl.pawelkielb.fchat.Exceptions.c;
+import static pl.pawelkielb.fchat.Exceptions.vf;
 
 public class ClientHandler {
     private final Database database;
@@ -114,8 +115,8 @@ public class ClientHandler {
 
                 var file = database.getFile(requestFilePacket.channel(), requestFilePacket.name());
                 file.subscribe(1000000, nextBytes -> {
-                    connection.sendBytes(nextBytes);
-                    connection.readPacket().thenRun(() -> file.requestNext(1000000));
+                    connection.sendBytes(nextBytes).exceptionally(vf(t -> file.close()));
+                    connection.readPacket().thenRun(() -> file.requestNext(1000000)).exceptionally(vf(t -> file.close()));
                 }, () -> {
                     connection.sendBytes(new byte[0]);
                     handlePacketFuture.complete(null);
