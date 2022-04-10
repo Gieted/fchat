@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static pl.pawelkielb.fchat.Exceptions.c;
+import static pl.pawelkielb.fchat.Functions.rc;
 
 public class FileLogger implements Logger {
     private Path path;
@@ -25,7 +25,7 @@ public class FileLogger implements Logger {
         if (writer == null) {
             try {
                 writer = Files.newBufferedWriter(path);
-                applicationExitEvent.subscribe(c(() -> writer.close()));
+                applicationExitEvent.subscribe(rc(() -> writer.close()));
             } catch (IOException ignore) {
             }
             path = null;

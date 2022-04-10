@@ -21,8 +21,9 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import static pl.pawelkielb.fchat.Exceptions.c;
-import static pl.pawelkielb.fchat.Exceptions.r;
+import static pl.pawelkielb.fchat.Functions.c;
+import static pl.pawelkielb.fchat.Functions.r;
+
 
 public class Database {
     private final Executor ioThreads;

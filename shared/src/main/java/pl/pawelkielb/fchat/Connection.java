@@ -11,9 +11,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static pl.pawelkielb.fchat.Exceptions.*;
+import static pl.pawelkielb.fchat.Functions.*;
 
-
+/**
+ * Allows sending either bytes or packets between two parties.
+ * When sending a byte array, first it sends its length on 4 bytes and then the array itself.
+ * Also allows sending a special packet called a null-packet. It will be encoded as an array of size 0.
+ */
 public class Connection {
     private final PacketEncoder packetEncoder;
     private Socket socket;
@@ -57,12 +61,9 @@ public class Connection {
         this.logger = logger;
     }
 
-    public static class NetworkException extends RuntimeException {
-    }
-
     /**
      * @param bytes an array of bytes to send
-     * @return a future that'll complete when all bytes will be sent.
+     * @return a future that'll be resolved when all bytes will be sent.
      * Might complete exceptionally with the following exceptions:
      * <li>NetworkException - if network fails
      * <li>DisconnectedException - if the other party disconnects
@@ -71,7 +72,10 @@ public class Connection {
         return taskQueue.runSuspend(task -> sendBytesInternal(bytes).thenRun(() -> {
             logger.info(String.format("Sent %d bytes", bytes.length));
             task.complete(null);
-        }).exceptionally(vf(task::completeExceptionally)));
+        }).exceptionally(cvf(task::completeExceptionally)));
+    }
+
+    public static class ConcurrentReadException extends RuntimeException {
     }
 
     /**
@@ -79,36 +83,52 @@ public class Connection {
      * Might complete exceptionally with the following exceptions:
      * <li>NetworkException - if network fails
      * <li>DisconnectedException - if the other party disconnects
+     * @throws ConcurrentReadException if two threads attempt to read at the same time
      */
     public CompletableFuture<byte[]> readBytes() {
         CompletableFuture<byte[]> future = new CompletableFuture<>();
         readBytesInternal().thenAccept(bytes -> {
             logger.info(String.format("Received %d bytes", bytes.length));
             future.complete(bytes);
-        }).exceptionally(vf(future::completeExceptionally));
+        }).exceptionally(cvf(future::completeExceptionally));
 
         return future;
     }
 
+    /**
+     * @param packet a packet to send. Can be a null, which will send a null-packet.
+     * @return a future that will be resolved when the packet is sent.
+     * Might complete exceptionally with the following exceptions:
+     * <li>NetworkException - if network fails
+     * <li>DisconnectedException - if the other party disconnects
+     */
     public CompletableFuture<Void> sendPacket(Packet packet) {
         return taskQueue.runSuspend(task -> {
             if (packet == null) {
                 sendBytesInternal(nullPacket).thenRun(() -> {
                     logger.info("Sent packet: null");
                     task.complete(null);
-                }).exceptionally(vf(task::completeExceptionally));
+                }).exceptionally(cvf(task::completeExceptionally));
             } else {
                 workerThreads.execute(() -> {
                     byte[] packetBytes = packetEncoder.toBytes(packet);
                     sendBytesInternal(packetBytes).thenRun(() -> {
                         logger.info("Sent packet: " + packet);
                         task.complete(null);
-                    }).exceptionally(vf(task::completeExceptionally));
+                    }).exceptionally(cvf(task::completeExceptionally));
                 });
             }
         });
     }
 
+    /**
+     * @return a future that will be resolved to a packet.
+     * The resolved packet can be a null if a null-packet was recieved.
+     * Might complete exceptionally with the following exceptions:
+     * <li>NetworkException - if network fails
+     * <li>DisconnectedException - if the other party disconnects
+     * @throws ConcurrentReadException if two threads attempt to read at the same time
+     */
     public CompletableFuture<Packet> readPacket() {
         CompletableFuture<Packet> future = new CompletableFuture<>();
         readBytesInternal().thenAccept(bytes -> {
@@ -123,7 +143,7 @@ public class Connection {
                 logger.info("Received packet: " + packet);
                 future.complete(packet);
             });
-        }).exceptionally(vf(future::completeExceptionally));
+        }).exceptionally(cvf(future::completeExceptionally));
 
         return future;
     }
@@ -136,17 +156,21 @@ public class Connection {
         return ByteBuffer.allocate(4).putInt(integer).array();
     }
 
-    private void connect() throws IOException {
+    private void connect() {
         if (socket == null) {
-            socket = new Socket(address, port);
-            applicationExitEvent.subscribe(c(() -> taskQueue.run(r(socket::close))));
+            try {
+                socket = new Socket(address, port);
+            } catch (IOException e) {
+                throw new NetworkException(e);
+            }
+            applicationExitEvent.subscribe(rc(() -> taskQueue.run(r(socket::close))));
         }
     }
 
     private CompletableFuture<Void> sendBytesInternal(byte[] bytes) {
         CompletableFuture<Void> future = new CompletableFuture<>();
 
-        ioThreads.execute(r(() -> {
+        ioThreads.execute(() -> {
             connect();
 
             try {
@@ -158,7 +182,7 @@ public class Connection {
             } catch (IOException e) {
                 future.completeExceptionally(new DisconnectedException());
             }
-        }));
+        });
 
         return future;
     }
@@ -170,7 +194,7 @@ public class Connection {
             throw new ConcurrentReadException();
         }
 
-        ioThreads.execute(r(() -> {
+        ioThreads.execute(() -> {
             connect();
 
             try {
@@ -192,7 +216,7 @@ public class Connection {
                 readLock = new ReentrantLock();
                 future.completeExceptionally(new DisconnectedException());
             }
-        }));
+        });
 
         return future;
     }

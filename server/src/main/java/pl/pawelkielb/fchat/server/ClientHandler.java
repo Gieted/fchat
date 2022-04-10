@@ -13,8 +13,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static pl.pawelkielb.fchat.Exceptions.c;
-import static pl.pawelkielb.fchat.Exceptions.vf;
+import static pl.pawelkielb.fchat.Functions.cvf;
+import static pl.pawelkielb.fchat.Functions.rc;
+
 
 public class ClientHandler {
     private final Database database;
@@ -91,7 +92,7 @@ public class ClientHandler {
             );
 
             AtomicLong totalSize = new AtomicLong(0);
-            producer.subscribe(c(() -> {
+            producer.subscribe(rc(() -> {
                 connection.sendPacket(null);
                 connection.readBytes().thenAccept(nextBytes -> {
                     totalSize.addAndGet(nextBytes.length);
@@ -116,13 +117,13 @@ public class ClientHandler {
 
                 var file = database.getFile(requestFilePacket.channel(), requestFilePacket.name());
                 file.subscribe(1000000, nextBytes -> {
-                    connection.sendBytes(nextBytes).exceptionally(vf(t -> file.close()));
-                    connection.readPacket().thenRun(() -> file.requestNext(1000000)).exceptionally(vf(t -> file.close()));
+                    connection.sendBytes(nextBytes).exceptionally(cvf(t -> file.close()));
+                    connection.readPacket().thenRun(() -> file.requestNext(1000000)).exceptionally(cvf(t -> file.close()));
                 }, () -> {
                     connection.sendBytes(new byte[0]);
                     handlePacketFuture.complete(null);
                 }, handlePacketFuture::completeExceptionally);
-            }).exceptionally(vf(throwable -> {
+            }).exceptionally(cvf(throwable -> {
                 if (throwable.getCause() instanceof NoSuchFileException) {
                     connection.sendPacket(null);
                     handlePacketFuture.complete(null);

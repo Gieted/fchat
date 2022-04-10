@@ -11,8 +11,8 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import static pl.pawelkielb.fchat.Exceptions.c;
-import static pl.pawelkielb.fchat.Exceptions.r;
+import static pl.pawelkielb.fchat.Functions.c;
+import static pl.pawelkielb.fchat.Functions.r;
 
 
 public class Main {

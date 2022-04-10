@@ -2,6 +2,7 @@ package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.Connection;
 import pl.pawelkielb.fchat.DisconnectedException;
+import pl.pawelkielb.fchat.NetworkException;
 import pl.pawelkielb.fchat.StringUtils;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
@@ -44,7 +45,7 @@ public class Client {
     /**
      * Downloads updates from the server and applies them to the database.
      *
-     * @throws IOException           if network fails
+     * @throws NetworkException      if network fails
      * @throws ProtocolException     if the server does something unexpected
      * @throws DisconnectedException if the server disconnects
      * @throws FileWriteException    if saving updates fails
@@ -72,7 +73,7 @@ public class Client {
 
     /**
      * @param recipient username of a user you want to chat with
-     * @throws IOException           if network fails
+     * @throws NetworkException      if network fails
      * @throws ProtocolException     if the server does something unexpected
      * @throws DisconnectedException if the server disconnects
      */
@@ -83,7 +84,7 @@ public class Client {
     /**
      * @param name    a name of the channel. If a null is provided the name will be decided by the server.
      * @param members a list of usernames of users who should be participants of this channel
-     * @throws IOException           if network fails
+     * @throws NetworkException      if network fails
      * @throws ProtocolException     if the server does something unexpected
      * @throws DisconnectedException if the server disconnects
      */
@@ -99,7 +100,7 @@ public class Client {
     /**
      * @param channel an uuid of a channel you want to send the message to
      * @param message a message to send
-     * @throws IOException           if network fails
+     * @throws NetworkException      if network fails
      * @throws ProtocolException     if the server does something unexpected
      * @throws DisconnectedException if the server disconnects
      */
@@ -115,7 +116,7 @@ public class Client {
      * @param count   a count of messages to read
      * @return an iterable of read messages.
      * Calling it's next() and hasNext() might produce the same exceptions as this method call.
-     * @throws IOException           if network fails
+     * @throws NetworkException      if network fails
      * @throws ProtocolException     if the server does something unexpected
      * @throws DisconnectedException if the server disconnects
      */
@@ -181,13 +182,18 @@ public class Client {
      * @param path             a path of the file you want to send
      * @param progressConsumer a callback function, that'll be called to report the upload progress.
      *                         Its parameter is a value from 0.0 to 1.0.
-     * @throws IOException           if network fails
+     * @throws NetworkException      if network fails
      * @throws ProtocolException     if the server does something unexpected
      * @throws DisconnectedException if the server disconnects
+     * @throws NoSuchFileException   if the path's target does not exist
      * @throws NotFileException      if the path's target is not a file
      * @throws FileReadException     if reading the file fails
      */
     public void sendFile(UUID channel, Path path, Consumer<Double> progressConsumer) throws IOException {
+        if (!Files.exists(path)) {
+            throw new NoSuchFileException(path.toString());
+        }
+
         if (!Files.isRegularFile(path)) {
             throw new NotFileException();
         }
@@ -215,26 +221,21 @@ public class Client {
         }
     }
 
-    public static class CannotFindFile extends RuntimeException {
-    }
-
     /**
      * @param channel              an uuid of a channel from which you want to download the file
      * @param name                 a name of the file to download
      * @param destinationDirectory a directory the file will be saved to
      * @param progressConsumer     a callback function, that'll be called to report the download progress.
      *                             Its parameter is a value from 0.0 to 1.0.
-     * @throws Connection.NetworkException if network fails
-     * @throws ProtocolException           if the server does something unexpected
-     * @throws DisconnectedException       if the server disconnects
-     * @throws NotDirectoryException       if provided directory does not exist
-     * @throws CannotFindFile              if there is no file with such a name in the channel
-     * @throws FileWriteException          if saving the file fails
+     * @throws NetworkException       if network fails
+     * @throws ProtocolException      if the server does something unexpected
+     * @throws DisconnectedException  if the server disconnects
+     * @throws NotDirectoryException  if the not a directory is passed as a directory
+     * @throws NoSuchElementException if there is no file with such a name in the channel
+     * @throws FileWriteException     if saving the file fails
      */
     public void downloadFile(UUID channel, String name, Path destinationDirectory, Consumer<Double> progressConsumer)
-            throws NotDirectoryException,
-            NoSuchFileException,
-            ProtocolException {
+            throws NotDirectoryException, ProtocolException {
 
         if (!Files.isDirectory(destinationDirectory)) {
             throw new NotDirectoryException(destinationDirectory.toString());
@@ -246,7 +247,7 @@ public class Client {
         var packet = doSync(connection::readPacket);
 
         if (packet == null) {
-            throw new NoSuchFileException(name);
+            throw new NoSuchElementException(name);
         }
 
         long fileSize;

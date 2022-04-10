@@ -8,12 +8,12 @@ import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
 
-import java.io.IOException;
 import java.net.ProtocolException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
@@ -83,7 +83,7 @@ public abstract class Commands {
                 try {
                     channelName = Name.of(args.get(0));
                 } catch (IllegalArgumentException e) {
-                    ExceptionHandler.onIllegalNameProvided(e);
+                    ExceptionHandler.onIllegalArgument("Illegal name was provided", e);
                     return;
                 }
 
@@ -159,10 +159,24 @@ public abstract class Commands {
                     return;
                 }
 
+                if (args.size() == 0) {
+                    ExceptionHandler.onMissingArgument("Please provide a path");
+                }
+
                 Path path = Paths.get(args.get(0));
                 ProgressBar progressBar = new ProgressBar(console);
 
-                doNetwork(() -> client.sendFile(channelConfig.id(), path, progressBar::update));
+                doNetwork(() -> client.sendFile(channelConfig.id(), path, progressBar::update), e -> {
+                    if (e instanceof NoSuchFileException) {
+                        ExceptionHandler.onIllegalArgument("No such file", e);
+                    }
+
+                    if (e instanceof Client.NotFileException) {
+                        ExceptionHandler.onIllegalArgument("Cannot send a directory");
+                    }
+
+                    throwAsUnchecked(e);
+                });
 
                 console.updateLine("");
             }
@@ -180,16 +194,11 @@ public abstract class Commands {
                 String fileName = args.get(0);
                 ProgressBar progressBar = new ProgressBar(console);
 
-                doNetwork(
-                        () -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), progressBar::update),
-                        e -> {
-                            if (e instanceof NoSuchFileException) {
-                                ExceptionHandler.onNoSuchFile(e);
-                            } else {
-                                throwAsUnchecked(e);
-                            }
-                        }
-                );
+                try {
+                    doNetwork(() -> client.downloadFile(channelConfig.id(), fileName, Paths.get("."), progressBar::update));
+                } catch (NoSuchElementException e) {
+                    ExceptionHandler.onIllegalArgument("No such file", e);
+                }
 
                 console.updateLine("");
             }
@@ -202,27 +211,27 @@ public abstract class Commands {
         console.println(String.format("%s: %s", message.author(), message.content()));
     }
 
-    private static void doNetwork(Exceptions.Runnable_WithExceptions<IOException> runnable,
+    private static void doNetwork(Exceptions.Runnable_WithExceptions<Exception> runnable,
                                   Consumer<Exception> exceptionHandler) {
 
         try {
             runnable.run();
-        } catch (NoSuchFileException e) {
+        } catch (ProtocolException e) {
+            ExceptionHandler.onProtocolException(e);
+        } catch (NetworkException e) {
+            ExceptionHandler.onNetworkException(e);
+        } catch (DisconnectedException e) {
+            ExceptionHandler.onServerDisconnected(e);
+        } catch (Exception e) {
             if (exceptionHandler != null) {
                 exceptionHandler.accept(e);
             } else {
                 throwAsUnchecked(e);
             }
-        } catch (ProtocolException e) {
-            ExceptionHandler.onProtocolException(e);
-        } catch (IOException e) {
-            ExceptionHandler.onNetworkException(e);
-        } catch (DisconnectedException e) {
-            ExceptionHandler.onServerDisconnected(e);
         }
     }
 
-    private static void doNetwork(Exceptions.Runnable_WithExceptions<IOException> runnable) {
+    private static void doNetwork(Exceptions.Runnable_WithExceptions<Exception> runnable) {
         doNetwork(runnable, null);
     }
 }

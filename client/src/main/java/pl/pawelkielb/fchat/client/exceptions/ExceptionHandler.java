@@ -2,10 +2,10 @@ package pl.pawelkielb.fchat.client.exceptions;
 
 import pl.pawelkielb.fchat.DisconnectedException;
 import pl.pawelkielb.fchat.Exceptions;
+import pl.pawelkielb.fchat.NetworkException;
 import pl.pawelkielb.fchat.client.Database;
 import pl.pawelkielb.fchat.client.Main;
 
-import java.io.IOException;
 import java.net.ProtocolException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,7 +42,7 @@ public abstract class ExceptionHandler {
         System.exit(6);
     }
 
-    public static void onNetworkException(IOException e) {
+    public static void onNetworkException(NetworkException e) {
         checkDevMode(e);
         printError(getExceptionMessage(new RuntimeException("There was an error while sending data", e)));
         System.exit(7);
@@ -66,14 +66,16 @@ public abstract class ExceptionHandler {
         System.exit(10);
     }
 
-    public static void onIllegalArgument(String message, IllegalArgumentException e) {
+    public static void onIllegalArgument(String message, Exception e) {
         checkDevMode(e);
         printError(getExceptionMessage("Illegal argument value -> " + message, e));
         System.exit(11);
     }
 
     public static void onIllegalArgument(String message) {
-        onIllegalArgument(message, null);
+        checkDevMode();
+        printError(getExceptionMessage("Illegal argument value", message));
+        System.exit(11);
     }
 
     public static void onCommandNotUsedInChannelDirectory() {
@@ -88,22 +90,10 @@ public abstract class ExceptionHandler {
         System.exit(13);
     }
 
-    public static void onIllegalNameProvided(IllegalArgumentException e) {
-        checkDevMode(e);
-        printError(getExceptionMessage("Illegal name provided", e));
-        System.exit(14);
-    }
-
     public static void onProtocolException(ProtocolException e) {
         checkDevMode(e);
         printError(getExceptionMessage("Protocol error", e));
         System.exit(15);
-    }
-
-    public static void onNoSuchFile(Exception e) {
-        checkDevMode(e);
-        printError("No such file: " + e.getMessage());
-        System.exit(16);
     }
 
     public static void onUnknownException(Exception e) {
