@@ -7,7 +7,6 @@ import pl.pawelkielb.fchat.client.Database;
 import pl.pawelkielb.fchat.client.Main;
 
 import java.net.ProtocolException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,15 +29,15 @@ public abstract class ExceptionHandler {
         System.exit(4);
     }
 
-    public static void onCannotReadFile(Path path, FileReadException e) {
+    public static void onCannotReadFile(FileReadException e) {
         checkDevMode();
-        printError(getExceptionMessage(String.format("Cannot read a file (%s)", path.toAbsolutePath()), e));
+        printError(getExceptionMessage(e));
         System.exit(5);
     }
 
-    public static void onCannotWriteFile(Path path, FileWriteException e) {
+    public static void onCannotWriteFile(FileWriteException e) {
         checkDevMode();
-        printError(getExceptionMessage(String.format("Cannot write a file (%s)", path.toAbsolutePath()), e));
+        printError(getExceptionMessage(e));
         System.exit(6);
     }
 

@@ -1,15 +1,10 @@
 package pl.pawelkielb.fchat.client.exceptions;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
 public class FileReadException extends RuntimeException {
-    private final Path path;
-
-    public FileReadException(Path path) {
-        this.path = path;
-    }
-
-    public Path getPath() {
-        return path;
+    public FileReadException(Path path, IOException cause) {
+        super(String.format("Cannot a the file (%s)", path.toAbsolutePath()), cause);
     }
 }

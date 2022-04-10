@@ -41,7 +41,7 @@ public abstract class Commands {
                 database.saveClientConfig(defaultClientConfig);
                 return;
             } catch (FileWriteException e) {
-                ExceptionHandler.onCannotWriteFile(e.getPath(), e);
+                ExceptionHandler.onCannotWriteFile(e);
                 throw new AssertionError();
             }
         }

@@ -30,6 +30,9 @@ import static pl.pawelkielb.fchat.Exceptions.throwAsUnchecked;
 import static pl.pawelkielb.fchat.TransferSettings.fileChunkSize;
 
 
+/**
+ * A stateful fchat client.
+ */
 public class Client {
     private final Database database;
     private final Connection connection;

@@ -1,5 +1,9 @@
 package pl.pawelkielb.fchat.client;
 
+
+/**
+ * An abstraction over a terminal console.
+ */
 public class Console {
     public void println() {
         System.out.println();
@@ -14,7 +18,6 @@ public class Console {
     public void updateLine(String content) {
         int contentHash = content.hashCode();
         if (contentHash != currentLineHash) {
-
             System.out.print("\r" + content);
             currentLineHash = contentHash;
         }
