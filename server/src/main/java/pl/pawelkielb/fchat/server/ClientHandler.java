@@ -11,22 +11,58 @@ import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static pl.pawelkielb.fchat.Functions.cvf;
-import static pl.pawelkielb.fchat.Functions.rc;
+import static pl.pawelkielb.fchat.Functions.*;
 
-
+/**
+ * Handles a single client's requests.
+ */
 public class ClientHandler {
     private final Database database;
     private final Connection connection;
-    private Name username;
     private final MessageManager messageManager;
+    private final Executor workerThreads;
 
-    public ClientHandler(Database database, Connection connection, MessageManager messageManager) {
+    private Name username;
+
+    public ClientHandler(Database database, Connection connection, MessageManager messageManager, Executor workerThreads) {
         this.database = database;
         this.connection = connection;
         this.messageManager = messageManager;
+        this.workerThreads = workerThreads;
+    }
+
+    /**
+     * @param packet a packet to handle
+     * @return An observable of
+     * @throws ProtocolException if
+     */
+    public CompletableFuture<Void> handlePacket(Packet packet) {
+        CompletableFuture<Void> handlePacketFuture = new CompletableFuture<>();
+
+        workerThreads.execute(r(() -> {
+            if (packet instanceof LoginPacket loginPacket) {
+                handleLoginPacket(loginPacket, handlePacketFuture);
+            } else if (packet instanceof RequestUpdatesPacket) {
+                handleRequestUpdatesPacket(handlePacketFuture);
+            } else if (packet instanceof UpdateChannelPacket updateChannelPacket) {
+                handleUpdateChannelPacket(updateChannelPacket, handlePacketFuture);
+            } else if (packet instanceof SendMessagePacket sendMessagePacket) {
+                handleSendMessagePacket(sendMessagePacket, handlePacketFuture);
+            } else if (packet instanceof RequestMessagesPacket requestMessagesPacket) {
+                handleRequestMessagesPacket(requestMessagesPacket, handlePacketFuture);
+            } else if (packet instanceof SendFilePacket sendFilePacket) {
+                handleSendFilePacket(sendFilePacket, handlePacketFuture);
+            } else if (packet instanceof RequestFilePacket requestFilePacket) {
+                handleRequestFilePacket(requestFilePacket, handlePacketFuture);
+            } else {
+                handlePacketFuture.complete(null);
+            }
+        }));
+
+        return handlePacketFuture;
     }
 
     private void checkLoggedIn() throws ProtocolException {
@@ -35,107 +71,111 @@ public class ClientHandler {
         }
     }
 
-    public CompletableFuture<Void> handlePacket(Packet packet) throws ProtocolException {
-        CompletableFuture<Void> handlePacketFuture = new CompletableFuture<>();
+    private void handleLoginPacket(LoginPacket packet, CompletableFuture<Void> handlePacketFuture) {
+        username = packet.username();
+        handlePacketFuture.complete(null);
+    }
 
-        if (packet instanceof LoginPacket loginPacket) {
-            username = loginPacket.username();
-            handlePacketFuture.complete(null);
+    private void handleRequestUpdatesPacket(CompletableFuture<Void> handlePacketFuture)
+            throws ProtocolException {
 
-        } else if (packet instanceof RequestUpdatesPacket) {
-            checkLoggedIn();
+        checkLoggedIn();
 
-            database.listUpdatePackets(username)
-                    .subscribe(channelUpdatedPacket -> connection.sendPacket(channelUpdatedPacket).thenRun(() ->
-                            database.deleteUpdatePacket(username, channelUpdatedPacket.channel())), () -> {
-                        connection.sendPacket(null);
-                        handlePacketFuture.complete(null);
-                    });
+        database.listUpdatePackets(username)
+                .subscribe(
+                        channelUpdatedPacket -> connection.sendPacket(channelUpdatedPacket).thenRun(() ->
+                                database.deleteUpdatePacket(username, channelUpdatedPacket.channel())),
+                        () -> {
+                            connection.sendPacket(null);
+                            handlePacketFuture.complete(null);
+                        });
+    }
 
-        } else if (packet instanceof UpdateChannelPacket updateChannelPacket) {
-            checkLoggedIn();
+    private void handleUpdateChannelPacket(UpdateChannelPacket packet, CompletableFuture<Void> handlePacketFuture)
+            throws ProtocolException {
 
-            ChannelUpdatedPacket channelUpdatedPacket = new ChannelUpdatedPacket(
-                    updateChannelPacket.channel(),
-                    updateChannelPacket.name()
-            );
+        checkLoggedIn();
 
-            List<CompletableFuture<Void>> futures = new ArrayList<>();
-            List<Name> members = new ArrayList<>(updateChannelPacket.members());
-            members.add(this.username);
-            for (var member : members) {
-                CompletableFuture<Void> future = new CompletableFuture<>();
-                futures.add(future);
-                database.saveUpdatePacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
-            }
-            Futures.allOf(futures).thenRun(() -> handlePacketFuture.complete(null));
+        ChannelUpdatedPacket channelUpdatedPacket = new ChannelUpdatedPacket(
+                packet.channel(),
+                packet.name()
+        );
 
-        } else if (packet instanceof SendMessagePacket sendMessagePacket) {
-            messageManager.pushMessage(sendMessagePacket.channel(), sendMessagePacket.message());
-            handlePacketFuture.complete(null);
-
-        } else if (packet instanceof RequestMessagesPacket requestMessagesPacket) {
-            database.getMessages(requestMessagesPacket.channel(), requestMessagesPacket.count()).subscribe(message ->
-                    connection.sendPacket(new SendMessagePacket(requestMessagesPacket.channel(), message)), () -> {
-                connection.sendPacket(null);
-                handlePacketFuture.complete(null);
-            });
-
-        } else if (packet instanceof SendFilePacket sendFilePacket) {
-            Observable<Integer> producer = new Observable<>();
-            Observable<byte[]> consumer = new Observable<>();
-
-            var saveFileFuture = database.saveFile(
-                    sendFilePacket.channel(),
-                    sendFilePacket.name(),
-                    new AsyncStream<>(producer, consumer)
-            );
-
-            AtomicLong totalSize = new AtomicLong(0);
-            producer.subscribe(rc(() -> {
-                connection.sendPacket(null);
-                connection.readBytes().thenAccept(nextBytes -> {
-                    totalSize.addAndGet(nextBytes.length);
-                    if (nextBytes.length != 0) {
-                        consumer.onNext(nextBytes);
-                    } else {
-                        consumer.complete();
-                    }
-                });
-            }));
-
-            saveFileFuture.thenAccept(fileName -> {
-                messageManager.pushMessage(sendFilePacket.channel(), new Message(username,
-                        String.format("*file %s (%d bytes)*", fileName, totalSize.get())));
-                handlePacketFuture.complete(null);
-            });
-
-        } else if (packet instanceof RequestFilePacket requestFilePacket) {
-
-            database.getFileSize(requestFilePacket.channel(), requestFilePacket.name()).thenAccept(size -> {
-                connection.sendPacket(new SendFilePacket(requestFilePacket.channel(), requestFilePacket.name(), size));
-
-                var file = database.getFile(requestFilePacket.channel(), requestFilePacket.name());
-                file.subscribe(1000000, nextBytes -> {
-                    connection.sendBytes(nextBytes).exceptionally(cvf(t -> file.close()));
-                    connection.readPacket().thenRun(() -> file.requestNext(1000000)).exceptionally(cvf(t -> file.close()));
-                }, () -> {
-                    connection.sendBytes(new byte[0]);
-                    handlePacketFuture.complete(null);
-                }, handlePacketFuture::completeExceptionally);
-            }).exceptionally(cvf(throwable -> {
-                if (throwable.getCause() instanceof NoSuchFileException) {
-                    connection.sendPacket(null);
-                    handlePacketFuture.complete(null);
-                } else {
-                    handlePacketFuture.completeExceptionally(throwable);
-                }
-            }));
-
-        } else {
-            handlePacketFuture.complete(null);
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        List<Name> members = new ArrayList<>(packet.members());
+        members.add(this.username);
+        for (var member : members) {
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            futures.add(future);
+            database.saveUpdatePacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
         }
+        Futures.allOf(futures).thenRun(() -> handlePacketFuture.complete(null));
+    }
 
-        return handlePacketFuture;
+    private void handleSendMessagePacket(SendMessagePacket packet, CompletableFuture<Void> handlePacketFuture) {
+        messageManager.pushMessage(packet.channel(), packet.message());
+        handlePacketFuture.complete(null);
+    }
+
+    private void handleRequestMessagesPacket(RequestMessagesPacket packet, CompletableFuture<Void> handlePacketFuture) {
+        database.getMessages(packet.channel(), packet.count()).subscribe(message ->
+                connection.sendPacket(new SendMessagePacket(packet.channel(), message)), () -> {
+            connection.sendPacket(null);
+            handlePacketFuture.complete(null);
+        });
+    }
+
+    private void handleSendFilePacket(SendFilePacket packet, CompletableFuture<Void> handlePacketFuture) {
+        Observable<Integer> producer = new Observable<>();
+        Observable<byte[]> consumer = new Observable<>();
+
+        var saveFileFuture = database.saveFile(
+                packet.channel(),
+                packet.name(),
+                new AsyncStream<>(producer, consumer)
+        );
+
+        AtomicLong totalSize = new AtomicLong(0);
+        producer.subscribe(rc(() -> {
+            connection.sendPacket(null);
+            connection.readBytes().thenAccept(nextBytes -> {
+                totalSize.addAndGet(nextBytes.length);
+                if (nextBytes.length != 0) {
+                    consumer.onNext(nextBytes);
+                } else {
+                    consumer.complete();
+                }
+            });
+        }));
+
+        saveFileFuture.thenAccept(fileName -> {
+            messageManager.pushMessage(packet.channel(), new Message(username,
+                    String.format("*file %s (%d bytes)*", fileName, totalSize.get())));
+            handlePacketFuture.complete(null);
+        });
+    }
+
+    private void handleRequestFilePacket(RequestFilePacket packet, CompletableFuture<Void> handlePacketFuture) {
+        database.getFileSize(packet.channel(), packet.name()).thenAccept(size -> {
+            connection.sendPacket(new SendFilePacket(packet.channel(), packet.name(), size));
+
+            var file = database.getFile(packet.channel(), packet.name());
+            file.subscribe(1000000, nextBytes -> {
+                connection.sendBytes(nextBytes).exceptionally(cvf(t -> file.close()));
+                connection.readPacket()
+                        .thenRun(() -> file.requestNext(1000000))
+                        .exceptionally(cvf(t -> file.close()));
+            }, () -> {
+                connection.sendBytes(new byte[0]);
+                handlePacketFuture.complete(null);
+            }, handlePacketFuture::completeExceptionally);
+        }).exceptionally(cvf(throwable -> {
+            if (throwable.getCause() instanceof NoSuchFileException) {
+                connection.sendPacket(null);
+                handlePacketFuture.complete(null);
+            } else {
+                handlePacketFuture.completeExceptionally(throwable);
+            }
+        }));
     }
 }
