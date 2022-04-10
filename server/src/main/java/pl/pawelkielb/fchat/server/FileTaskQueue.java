@@ -138,7 +138,7 @@ public class FileTaskQueue<K> {
     }
 
     private void processLayers(List<Layer> layers) {
-        var tasksToRun = new ArrayList<Task<?>>();
+        List<Task<?>> tasksToRun = new ArrayList<>();
         masterQueue.run(() -> {
             if (layers.isEmpty()) {
                 return;
