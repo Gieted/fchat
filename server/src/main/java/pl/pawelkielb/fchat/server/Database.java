@@ -36,6 +36,11 @@ public class Database {
     private final PacketEncoder packetEncoder;
     private final Logger logger;
 
+    private final FileTaskQueue<UUID> messagesTaskQueue = new FileTaskQueue<>();
+    private final FileTaskQueue<Name> updatesTaskQueue = new FileTaskQueue<>();
+    private final FileTaskQueue<UUID> fileCreationTaskQueue = new FileTaskQueue<>();
+    private final FileTaskQueue<Path> fileTaskQueue = new FileTaskQueue<>();
+
     public Database(Executor workerThreads,
                     Executor ioThreads,
                     Path rootDirectory,
@@ -337,7 +342,6 @@ public class Database {
         raf.write("\n".getBytes());
     }
 
-    private final FileTaskQueue<UUID> messagesTaskQueue = new FileTaskQueue<>();
 
     private static long bytesToLong(byte[] bytes) {
         ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
@@ -345,13 +349,7 @@ public class Database {
         return buffer.getLong(0);
     }
 
-    private final FileTaskQueue<UUID> fileCreationTaskQueue = new FileTaskQueue<>();
-    private final FileTaskQueue<Path> fileTaskQueue = new FileTaskQueue<>();
-
-
     private static String nameToFilename(Name name) {
         return String.valueOf(name.value().toLowerCase().hashCode());
     }
-
-    private final FileTaskQueue<Name> updatesTaskQueue = new FileTaskQueue<>();
 }
