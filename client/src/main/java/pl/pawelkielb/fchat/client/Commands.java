@@ -193,7 +193,7 @@ public abstract class Commands {
                     ExceptionHandler.onMissingArgument("Please provide a file name");
                 }
 
-                String fileName = args.get(0);
+                Name fileName = Name.of(args.get(0));
                 ProgressBar progressBar = new ProgressBar(console);
 
                 try {

@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static pl.pawelkielb.fchat.Exceptions.throwAsUnchecked;
-import static pl.pawelkielb.fchat.TransferSettings.fileChunkSize;
+import static pl.pawelkielb.fchat.TransferSettings.fileChunkSizeInBytes;
 
 
 /**
@@ -212,7 +212,7 @@ public class Client {
         try (InputStream inputStream = Files.newInputStream(path)) {
             while (true) {
                 doSync(connection::readPacket);
-                var nextBytes = inputStream.readNBytes(fileChunkSize);
+                var nextBytes = inputStream.readNBytes(fileChunkSizeInBytes);
                 doSync(() -> connection.sendBytes(nextBytes));
                 bytesSent += nextBytes.length;
                 progressConsumer.accept(((double) bytesSent) / totalSize);
@@ -237,7 +237,7 @@ public class Client {
      * @throws NoSuchElementException if there is no file with such a name in the channel
      * @throws FileWriteException     if saving the file fails
      */
-    public void downloadFile(UUID channel, String name, Path destinationDirectory, Consumer<Double> progressConsumer)
+    public void downloadFile(UUID channel, Name name, Path destinationDirectory, Consumer<Double> progressConsumer)
             throws NotDirectoryException, ProtocolException {
 
         if (!Files.isDirectory(destinationDirectory)) {
@@ -250,7 +250,7 @@ public class Client {
         var packet = doSync(connection::readPacket);
 
         if (packet == null) {
-            throw new NoSuchElementException(name);
+            throw new NoSuchElementException(name.toString());
         }
 
         long fileSize;
@@ -262,7 +262,7 @@ public class Client {
 
         long bytesWritten = 0;
 
-        var filename = name;
+        var filename = name.toString();
         Path filePath = null;
         OutputStream output = null;
 

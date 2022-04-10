@@ -1,6 +1,6 @@
 package pl.pawelkielb.fchat.data;
 
-// cannot be a record, because of private constructor
+// cannot be a record, because of a private constructor
 public final class Name {
     private final String value;
 
@@ -21,6 +21,10 @@ public final class Name {
         if (name.isBlank()) {
             throw new IllegalArgumentException("Name cannot be blank");
         }
+        if (name.length() > 50) {
+            throw new IllegalArgumentException("Name cannot be longer than 50 characters");
+        }
+
         return new Name(name);
     }
 

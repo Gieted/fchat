@@ -127,7 +127,7 @@ public class PacketEncoder {
         Properties properties = new Properties();
         properties.setProperty("type", "RequestFile");
         properties.setProperty("channel", packet.channel().toString());
-        properties.setProperty("name", packet.name());
+        properties.setProperty("name", packet.name().toString());
         String packetString = propertiesToString(properties);
 
         return packetString.getBytes();
@@ -216,7 +216,7 @@ public class PacketEncoder {
 
             case "RequestFile" -> {
                 UUID channel = UUID.fromString(properties.getProperty("channel"));
-                String name = properties.getProperty("name");
+                Name name = Name.of(properties.getProperty("name"));
 
                 yield new RequestFilePacket(channel, name);
             }
