@@ -151,7 +151,7 @@ public class ClientHandler {
 
         saveFileFuture.thenAccept(fileName -> {
             messageManager.pushMessage(packet.channel(), new Message(username,
-                    String.format("*file %s (%d bytes)*", fileName, totalSize.get())));
+                    String.format("file \"%s\" (%d bytes)", fileName, totalSize.get())));
             handlePacketFuture.complete(null);
         });
     }
@@ -161,7 +161,7 @@ public class ClientHandler {
             connection.sendPacket(new SendFilePacket(packet.channel(), packet.name(), size));
 
             var file = database.getFile(packet.channel(), packet.name());
-            file.subscribe(1000000, nextBytes -> {
+            file.subscribe(fileChunkSizeInBytes, nextBytes -> {
                 connection.sendBytes(nextBytes).exceptionally(cvf(t -> file.close()));
                 connection.readPacket()
                         .thenRun(() -> file.requestNext(fileChunkSizeInBytes))
