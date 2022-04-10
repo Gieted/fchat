@@ -31,3 +31,8 @@ subprojects {
 
 project.extra["kotestVersion"] = "5.2.2"
 project.extra["mockkVersion"] = "1.12.3"
+
+tasks.register("stage") {
+    group = "build"
+    dependsOn(":server:build")
+}
