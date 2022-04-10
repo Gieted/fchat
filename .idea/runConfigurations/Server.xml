@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Server" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="pl.pawelkielb.fchat.server.Main" />
+    <module name="fchat.server.main" />
+    <option name="WORKING_DIRECTORY" value="test_server" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="pl.pawelkielb.fchat.exceptions.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+      <option name="Gradle.BeforeRunTask" enabled="true" tasks="release" externalProjectPath="$PROJECT_DIR$/client" vmOptions="" scriptParameters="" />
+    </method>
+  </configuration>
+</component>
