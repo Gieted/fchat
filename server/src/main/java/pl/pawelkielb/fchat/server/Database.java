@@ -248,7 +248,11 @@ public class Database {
             while (true) {
                 Path filePath = filesDirectory.resolve(fileName);
                 try {
-                    var output = Files.newOutputStream(filePath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+                    var output = Files.newOutputStream(
+                            filePath,
+                            StandardOpenOption.CREATE_NEW,
+                            StandardOpenOption.WRITE
+                    );
 
                     final String fileNameFinal = fileName;
 
