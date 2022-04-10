@@ -44,7 +44,6 @@ public abstract class Commands {
                 return;
             } catch (FileWriteException e) {
                 ExceptionHandler.onCannotWriteFile(e);
-                throw new AssertionError();
             }
         }
 
