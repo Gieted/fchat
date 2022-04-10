@@ -1,5 +1,7 @@
 package pl.pawelkielb.fchat;
 
+import pl.pawelkielb.fchat.exceptions.DisconnectedException;
+import pl.pawelkielb.fchat.exceptions.NetworkException;
 import pl.pawelkielb.fchat.packets.Packet;
 
 import java.io.IOException;
@@ -14,7 +16,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import static pl.pawelkielb.fchat.Functions.*;
 
 /**
- * Allows sending either bytes or packets between two parties.
+ * Allows sending either bytes or packets between two parties. It's thread-safe.
  * When sending a byte array, first it sends its length on 4 bytes and then the array itself.
  * Also allows sending a special packet called a null-packet. It will be encoded as an array of size 0.
  */
@@ -65,8 +67,8 @@ public class Connection {
      * @param bytes an array of bytes to send
      * @return a future that'll be resolved when all bytes will be sent.
      * Might complete exceptionally with the following exceptions:
-     * <li>NetworkException - if network fails
-     * <li>DisconnectedException - if the other party disconnects
+     * <li>{@link NetworkException} - if network fails
+     * <li>{@link DisconnectedException} - if the other party disconnects
      */
     public CompletableFuture<Void> sendBytes(byte[] bytes) {
         return taskQueue.runSuspend(task -> sendBytesInternal(bytes).thenRun(() -> {
@@ -81,8 +83,8 @@ public class Connection {
     /**
      * @return a future resolving to read bytes.
      * Might complete exceptionally with the following exceptions:
-     * <li>NetworkException - if network fails
-     * <li>DisconnectedException - if the other party disconnects
+     * <li>{@link NetworkException} - if network fails
+     * <li>{@link DisconnectedException} - if the other party disconnects
      * @throws ConcurrentReadException if two threads attempt to read at the same time
      */
     public CompletableFuture<byte[]> readBytes() {
@@ -99,8 +101,8 @@ public class Connection {
      * @param packet a packet to send. Can be a null, which will send a null-packet.
      * @return a future that will be resolved when the packet is sent.
      * Might complete exceptionally with the following exceptions:
-     * <li>NetworkException - if network fails
-     * <li>DisconnectedException - if the other party disconnects
+     * <li>{@link NetworkException} - if network fails
+     * <li>{@link DisconnectedException} - if the other party disconnects
      */
     public CompletableFuture<Void> sendPacket(Packet packet) {
         return taskQueue.runSuspend(task -> {
@@ -125,8 +127,8 @@ public class Connection {
      * @return a future that will be resolved to a packet.
      * The resolved packet can be a null if a null-packet was recieved.
      * Might complete exceptionally with the following exceptions:
-     * <li>NetworkException - if network fails
-     * <li>DisconnectedException - if the other party disconnects
+     * <li>{@link NetworkException} - if network fails
+     * <li>{@link DisconnectedException} - if the other party disconnects
      * @throws ConcurrentReadException if two threads attempt to read at the same time
      */
     public CompletableFuture<Packet> readPacket() {

@@ -1,10 +1,10 @@
 package pl.pawelkielb.fchat.client.exceptions;
 
-import pl.pawelkielb.fchat.DisconnectedException;
 import pl.pawelkielb.fchat.Exceptions;
-import pl.pawelkielb.fchat.NetworkException;
 import pl.pawelkielb.fchat.client.Database;
 import pl.pawelkielb.fchat.client.Main;
+import pl.pawelkielb.fchat.exceptions.DisconnectedException;
+import pl.pawelkielb.fchat.exceptions.NetworkException;
 
 import java.net.ProtocolException;
 import java.util.ArrayList;

@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static pl.pawelkielb.fchat.Functions.*;
 
 /**
- * Handles a single client's requests.
+ * Handles a single client's requests. It's not thread-safe.
  */
 public class ClientHandler {
     private final Database database;
@@ -36,8 +36,8 @@ public class ClientHandler {
 
     /**
      * @param packet a packet to handle
-     * @return An observable of
-     * @throws ProtocolException if
+     * @return A future that will be resolved when the packet was handled.
+     * Might complete exceptionally with any {@link Exception}.
      */
     public CompletableFuture<Void> handlePacket(Packet packet) {
         CompletableFuture<Void> handlePacketFuture = new CompletableFuture<>();
@@ -81,10 +81,10 @@ public class ClientHandler {
 
         checkLoggedIn();
 
-        database.listUpdatePackets(username)
+        database.listChannelUpdatedPackets(username)
                 .subscribe(
                         channelUpdatedPacket -> connection.sendPacket(channelUpdatedPacket).thenRun(() ->
-                                database.deleteUpdatePacket(username, channelUpdatedPacket.channel())),
+                                database.deleteChannelUpdatedPacket(username, channelUpdatedPacket.channel())),
                         () -> {
                             connection.sendPacket(null);
                             handlePacketFuture.complete(null);
@@ -107,7 +107,7 @@ public class ClientHandler {
         for (var member : members) {
             CompletableFuture<Void> future = new CompletableFuture<>();
             futures.add(future);
-            database.saveUpdatePacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
+            database.saveChannelUpdatedPacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
         }
         Futures.allOf(futures).thenRun(() -> handlePacketFuture.complete(null));
     }

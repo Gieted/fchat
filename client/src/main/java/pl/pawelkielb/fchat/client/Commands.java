@@ -7,6 +7,8 @@ import pl.pawelkielb.fchat.client.exceptions.ExceptionHandler;
 import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
+import pl.pawelkielb.fchat.exceptions.DisconnectedException;
+import pl.pawelkielb.fchat.exceptions.NetworkException;
 
 import java.net.ProtocolException;
 import java.nio.file.NoSuchFileException;

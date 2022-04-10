@@ -5,6 +5,10 @@ import pl.pawelkielb.fchat.TaskQueue;
 
 import java.util.concurrent.Executor;
 
+
+/**
+ * A {@link Logger} that logs to a console. It's thread-safe.
+ */
 public class ConsoleLogger implements Logger {
 
     private int i = 1;

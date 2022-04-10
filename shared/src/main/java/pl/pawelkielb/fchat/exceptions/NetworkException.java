@@ -1,4 +1,4 @@
-package pl.pawelkielb.fchat;
+package pl.pawelkielb.fchat.exceptions;
 
 import java.io.IOException;
 

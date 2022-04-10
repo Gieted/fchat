@@ -2,6 +2,7 @@ package pl.pawelkielb.fchat;
 
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
+import pl.pawelkielb.fchat.exceptions.PacketDecodeException;
 import pl.pawelkielb.fchat.packets.*;
 
 import java.io.ByteArrayOutputStream;

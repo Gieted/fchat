@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import static pl.pawelkielb.fchat.Functions.rc;
 
 /**
- * A logger that logs to a file.
+ * A {@link Logger} that logs to a file.
  */
 public class FileLogger implements Logger {
     private Path path;

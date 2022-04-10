@@ -1,8 +1,6 @@
 package pl.pawelkielb.fchat.client;
 
 import pl.pawelkielb.fchat.Connection;
-import pl.pawelkielb.fchat.DisconnectedException;
-import pl.pawelkielb.fchat.NetworkException;
 import pl.pawelkielb.fchat.StringUtils;
 import pl.pawelkielb.fchat.client.config.ChannelConfig;
 import pl.pawelkielb.fchat.client.config.ClientConfig;
@@ -10,6 +8,8 @@ import pl.pawelkielb.fchat.client.exceptions.FileReadException;
 import pl.pawelkielb.fchat.client.exceptions.FileWriteException;
 import pl.pawelkielb.fchat.data.Message;
 import pl.pawelkielb.fchat.data.Name;
+import pl.pawelkielb.fchat.exceptions.DisconnectedException;
+import pl.pawelkielb.fchat.exceptions.NetworkException;
 import pl.pawelkielb.fchat.packets.*;
 
 import java.io.IOException;

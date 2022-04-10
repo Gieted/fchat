@@ -25,6 +25,9 @@ import static pl.pawelkielb.fchat.Functions.c;
 import static pl.pawelkielb.fchat.Functions.r;
 
 
+/**
+ * Allows saving and loading the server's data. It's thread-safe.
+ */
 public class Database {
     private final Executor ioThreads;
     private final Executor workerThreads;
@@ -46,13 +49,35 @@ public class Database {
         this.logger = logger;
     }
 
-    private static String nameToFilename(Name name) {
-        return String.valueOf(name.value().toLowerCase().hashCode());
+    /**
+     * Saves a {@link ChannelUpdatedPacket} for the given username.
+     *
+     * @param username
+     * @param channelUpdatedPacket
+     * @return A future that will be resolved when the saving completes.
+     */
+    public CompletableFuture<Void> saveChannelUpdatedPacket(Name username, ChannelUpdatedPacket channelUpdatedPacket) {
+        Path directory = updatesDirectory.resolve(nameToFilename(username));
+
+        return updatesTaskQueue.runSuspendWriting(username, task -> ioThreads.execute(r(() -> {
+            Files.createDirectories(directory);
+            Path file = directory.resolve(channelUpdatedPacket.channel().toString());
+            byte[] bytes = packetEncoder.toBytes(channelUpdatedPacket);
+            Files.write(file, bytes);
+
+            logger.info(String.format("Saved update for user %s: %s", username, channelUpdatedPacket));
+            task.complete(null);
+        })));
     }
 
-    private final FileTaskQueue<Name> updatesTaskQueue = new FileTaskQueue<>();
-
-    public Observable<ChannelUpdatedPacket> listUpdatePackets(Name username) {
+    /**
+     * Reads all channel updated packets for the given username.
+     *
+     * @param username
+     * @return An observable of the packets.
+     * Will complete instantly if there are no channel updated packets for the given username.
+     */
+    public Observable<ChannelUpdatedPacket> listChannelUpdatedPackets(Name username) {
         Observable<ChannelUpdatedPacket> updatePackets = new Observable<>();
         Path directory = updatesDirectory.resolve(nameToFilename(username));
 
@@ -88,21 +113,14 @@ public class Database {
         return updatePackets;
     }
 
-    public CompletableFuture<Void> saveUpdatePacket(Name username, ChannelUpdatedPacket updatedPacket) {
-        Path directory = updatesDirectory.resolve(nameToFilename(username));
-
-        return updatesTaskQueue.runSuspendWriting(username, task -> ioThreads.execute(r(() -> {
-            Files.createDirectories(directory);
-            Path file = directory.resolve(updatedPacket.channel().toString());
-            byte[] bytes = packetEncoder.toBytes(updatedPacket);
-            Files.write(file, bytes);
-
-            logger.info(String.format("Saved update for user %s: %s", username, updatedPacket));
-            task.complete(null);
-        })));
-    }
-
-    public CompletableFuture<Void> deleteUpdatePacket(Name username, UUID channelId) {
+    /**
+     * Deletes a {@link ChannelUpdatedPacket} for the given username.
+     *
+     * @param username
+     * @param channelId an uuid of the channel of the ChannelUpdatedPacket
+     * @return A future that will be resolved when the deletion completes.
+     */
+    public CompletableFuture<Void> deleteChannelUpdatedPacket(Name username, UUID channelId) {
         return updatesTaskQueue.runSuspendWriting(username, task -> {
             Path directory = updatesDirectory.resolve(nameToFilename(username));
             ioThreads.execute(r(() -> {
@@ -113,12 +131,11 @@ public class Database {
         });
     }
 
-    private static void newLine(RandomAccessFile raf) throws IOException {
-        raf.write("\n".getBytes());
-    }
-
-    private final FileTaskQueue<UUID> messagesTaskQueue = new FileTaskQueue<>();
-
+    /**
+     * @param channel a channel on which the message should be saved
+     * @param message
+     * @return A future that will be resolved when the saving completes.
+     */
     public CompletableFuture<Void> saveMessage(UUID channel, Message message) {
         return messagesTaskQueue.runSuspendWriting(channel, task -> {
             Path directory = messagesDirectory.resolve(channel.toString());
@@ -130,7 +147,7 @@ public class Database {
                 long start;
                 long length;
                 try (RandomAccessFile raf = new RandomAccessFile(messagesPath.toFile(), "rw")) {
-                    // go to end of file
+                    // go to end of the file
                     raf.seek(raf.length());
 
                     start = raf.getFilePointer();
@@ -155,12 +172,11 @@ public class Database {
         });
     }
 
-    private static long bytesToLong(byte[] bytes) {
-        ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
-        buffer.put(bytes);
-        return buffer.getLong(0);
-    }
-
+    /**
+     * @param channel the channel from which to read the messages
+     * @param count   a count of messages to read
+     * @return An Observable of the messages.
+     */
     public Observable<Message> getMessages(UUID channel, int count) {
         Observable<Message> messages = new Observable<>();
 
@@ -209,9 +225,13 @@ public class Database {
         return messages;
     }
 
-    private final FileTaskQueue<UUID> fileCreationTaskQueue = new FileTaskQueue<>();
-    private final FileTaskQueue<Path> fileTaskQueue = new FileTaskQueue<>();
-
+    /**
+     * @param channel         a channel on which the file has been sent
+     * @param nameProposition a proposition of a name. If it's already taken the database will choose the new one.
+     * @param file            an AsyncStream of the file bytes. The database will send a byte count as a request
+     *                        and the async stream should publish the requested count of bytes to the stream.
+     * @return a future resolving to a name, under which the file was saved
+     */
     public CompletableFuture<String> saveFile(UUID channel, String nameProposition, AsyncStream<Integer, byte[]> file) {
         CompletableFuture<String> future = new CompletableFuture<>();
         Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
@@ -248,6 +268,12 @@ public class Database {
         return future;
     }
 
+    /**
+     * @param channel a channel from which to read the file
+     * @param name    a name of the file
+     * @return An async stream of the file.
+     * Consumer must send byte count as a request and the database will respond will the requested count of bytes.
+     */
     public AsyncStream<Integer, byte[]> getFile(UUID channel, String name) {
         Observable<Integer> producer = new Observable<>();
         Observable<byte[]> consumer = new Observable<>();
@@ -283,6 +309,11 @@ public class Database {
         return new AsyncStream<>(producer, consumer);
     }
 
+    /**
+     * @param channel a channel on which the file has been sent
+     * @param name    a name of the file
+     * @return A future resolving to the file size
+     */
     public CompletableFuture<Long> getFileSize(UUID channel, String name) {
         CompletableFuture<Long> result = new CompletableFuture<>();
         Path path = messagesDirectory.resolve(channel.toString()).resolve("files").resolve(name);
@@ -301,4 +332,26 @@ public class Database {
 
         return result;
     }
+
+    private static void newLine(RandomAccessFile raf) throws IOException {
+        raf.write("\n".getBytes());
+    }
+
+    private final FileTaskQueue<UUID> messagesTaskQueue = new FileTaskQueue<>();
+
+    private static long bytesToLong(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
+        buffer.put(bytes);
+        return buffer.getLong(0);
+    }
+
+    private final FileTaskQueue<UUID> fileCreationTaskQueue = new FileTaskQueue<>();
+    private final FileTaskQueue<Path> fileTaskQueue = new FileTaskQueue<>();
+
+
+    private static String nameToFilename(Name name) {
+        return String.valueOf(name.value().toLowerCase().hashCode());
+    }
+
+    private final FileTaskQueue<Name> updatesTaskQueue = new FileTaskQueue<>();
 }
