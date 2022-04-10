@@ -1,6 +1,10 @@
 package pl.pawelkielb.fchat.client;
 
 // \ =>              |5%
+
+/**
+ * Prints a progress bar to a {@link Console}.
+ */
 public class ProgressBar {
     private final static int length = 40;
     private final static double spinnerRotationsPerSecond = 8;
