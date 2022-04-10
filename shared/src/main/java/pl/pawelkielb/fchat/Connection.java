@@ -162,10 +162,10 @@ public class Connection {
         if (socket == null) {
             try {
                 socket = new Socket(address, port);
+                applicationExitEvent.subscribe(rc(() -> taskQueue.run(r(socket::close))));
             } catch (IOException e) {
                 throw new NetworkException(e);
             }
-            applicationExitEvent.subscribe(rc(() -> taskQueue.run(r(socket::close))));
         }
     }
 

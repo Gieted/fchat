@@ -133,50 +133,57 @@ public class FileTaskQueue<K> {
     private record WriteLayer(Task<?> task) implements Layer {
     }
 
-    private static <T> void processLayer_processTask(Task<T> task, List<CompletableFuture<?>> futures) {
-        CompletableFuture<T> future = task.future;
-        futures.add(future);
-        task.fn.accept(future);
-    }
-
-    private static <T> void processLayer_processTask(Task<T> task) {
-        CompletableFuture<T> future = task.future;
-        task.fn.accept(future);
+    private <T> void processTask(Task<T> task) {
+        task.fn.accept(task.future);
     }
 
     private void processLayers(List<Layer> layers) {
+        var tasksToRun = new ArrayList<Task<?>>();
         masterQueue.run(() -> {
+            if (layers.isEmpty()) {
+                return;
+            }
+
             Layer layer = layers.get(0);
             if (layer instanceof ReadLayer readLayer) {
-                List<CompletableFuture<?>> futures = new ArrayList<>();
-                for (var tasksIterator = readLayer.tasks.iterator(); tasksIterator.hasNext(); ) {
-                    var layerTask = tasksIterator.next();
-                    if (layerTask.future.isDone()) {
-                        tasksIterator.remove();
-                        continue;
-                    }
-
-                    if (!layerTask.hasStarted) {
-                        layerTask.hasStarted = true;
-                        processLayer_processTask(layerTask, futures);
-                    }
-                }
+                readLayer.tasks.removeIf(it -> it.future.isDone());
 
                 if (readLayer.tasks.isEmpty()) {
                     layers.remove(0);
                     return;
                 }
 
-                Futures.allOf(futures).thenRun(() -> processLayers(layers));
-            } else if (layer instanceof WriteLayer writeLayer) {
-                writeLayer.task.future.thenRun(() -> masterQueue.run(() -> layers.remove(0)));
-                writeLayer.task.hasStarted = true;
-                processLayer_processTask(writeLayer.task);
+                readLayer.tasks
+                        .stream()
+                        .filter(it -> !it.hasStarted)
+                        .forEach(it -> {
+                            it.hasStarted = true;
+                            tasksToRun.add(it);
+                        });
 
+            } else if (layer instanceof WriteLayer writeLayer) {
+                if (writeLayer.task.future.isDone()) {
+                    layers.remove(0);
+                    return;
+                }
+
+                if (!writeLayer.task.hasStarted) {
+                    writeLayer.task.hasStarted = true;
+                    tasksToRun.add(writeLayer.task);
+                }
             } else {
                 throw new AssertionError();
             }
         });
+
+        var futures = tasksToRun.stream().map(it -> {
+            processTask(it);
+            return it.future;
+        }).toList();
+
+        if (!futures.isEmpty()) {
+            Futures.allOf(futures).thenRun(() -> processLayers(layers));
+        }
     }
 
     private List<Layer> getLayers(K key) {

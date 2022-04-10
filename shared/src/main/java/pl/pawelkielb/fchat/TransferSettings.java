@@ -1,5 +1,5 @@
 package pl.pawelkielb.fchat;
 
-public class TransferSettings {
+public abstract class TransferSettings {
     public static int fileChunkSizeInBytes = 1000000;
 }

@@ -102,7 +102,9 @@ public abstract class ExceptionHandler {
     }
 
     private static void printError(String message) {
+        System.err.println();
         System.err.println(message);
+        System.err.println();
     }
 
     private static void checkDevMode(Exception e) {
