@@ -18,7 +18,7 @@ The installation procedure:
 2. Unpack it to any folder you wish.
 3. Add `bin/` folder to your `PATH`.
 4. Restart the computer or restart explorer in the task manager.
-5. Open a terminal and try using `fchat` command. If the installation was successful you should see the command list.
+5. Open a terminal and try using `fchat` command. If the installation was successful you should see a command list.
 
 ## Setup
 
@@ -130,3 +130,13 @@ fchat download [name]
 ```
 
 - a name of a file to download
+
+## Running the server locally
+
+-----------
+
+In order to run the server locally:
+
+1. Clone the repository
+2. Run `./gradlew server:run`
+3. The server port is always `1337`
