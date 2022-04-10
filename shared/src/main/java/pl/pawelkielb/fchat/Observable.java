@@ -59,7 +59,7 @@ public class Observable<T> {
      *
      * @param e the exception
      */
-    public void onException(Exception e) {
+    public void completeWithException(Exception e) {
         if (completed) {
             throw new IllegalStateException(alreadyCompleted);
         }

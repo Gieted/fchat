@@ -44,7 +44,8 @@ public class Database {
     public Database(Executor workerThreads,
                     Executor ioThreads,
                     Path rootDirectory,
-                    PacketEncoder packetEncoder, Logger logger) {
+                    PacketEncoder packetEncoder,
+                    Logger logger) {
 
         this.ioThreads = ioThreads;
         this.workerThreads = workerThreads;
@@ -65,13 +66,17 @@ public class Database {
         Path directory = updatesDirectory.resolve(nameToFilename(username));
 
         return updatesTaskQueue.runSuspendWriting(username, task -> ioThreads.execute(r(() -> {
-            Files.createDirectories(directory);
-            Path file = directory.resolve(channelUpdatedPacket.channel().toString());
-            byte[] bytes = packetEncoder.toBytes(channelUpdatedPacket);
-            Files.write(file, bytes);
+            try {
+                Files.createDirectories(directory);
+                Path file = directory.resolve(channelUpdatedPacket.channel().toString());
+                byte[] bytes = packetEncoder.toBytes(channelUpdatedPacket);
+                Files.write(file, bytes);
 
-            logger.info(String.format("Saved update for user %s: %s", username, channelUpdatedPacket));
-            task.complete(null);
+                logger.info(String.format("Saved update for user %s: %s", username, channelUpdatedPacket));
+                task.complete(null);
+            } catch (Exception e) {
+                task.completeExceptionally(e);
+            }
         })));
     }
 
@@ -87,32 +92,37 @@ public class Database {
         Path directory = updatesDirectory.resolve(nameToFilename(username));
 
         updatesTaskQueue.runSuspendReading(username, task -> ioThreads.execute(r(() -> {
-            if (!Files.exists(directory)) {
+            try {
+                if (!Files.exists(directory)) {
+                    task.complete(null);
+                    updatePackets.complete();
+                    return;
+                }
+
+                List<CompletableFuture<Void>> futures = Files.list(directory).map(file -> {
+                    CompletableFuture<Void> future = new CompletableFuture<>();
+                    ioThreads.execute(r(() -> {
+                        byte[] bytes = Files.readAllBytes(file);
+
+                        workerThreads.execute(() -> {
+                            ChannelUpdatedPacket packet = (ChannelUpdatedPacket) packetEncoder.decode(bytes);
+                            updatePackets.onNext(packet);
+                            future.complete(null);
+                        });
+                    }));
+
+                    return future;
+                }).toList();
+
+                Futures.allOf(futures).thenRun(() -> {
+                    logger.info(String.format("Read %d updates for user %s", futures.size(), username));
+                    task.complete(null);
+                    updatePackets.complete();
+                });
+            } catch (Exception e) {
                 task.complete(null);
-                updatePackets.complete();
-                return;
+                updatePackets.completeWithException(e);
             }
-
-            List<CompletableFuture<Void>> futures = Files.list(directory).map(file -> {
-                CompletableFuture<Void> future = new CompletableFuture<>();
-                ioThreads.execute(r(() -> {
-                    byte[] bytes = Files.readAllBytes(file);
-
-                    workerThreads.execute(() -> {
-                        ChannelUpdatedPacket packet = (ChannelUpdatedPacket) packetEncoder.decode(bytes);
-                        updatePackets.onNext(packet);
-                        future.complete(null);
-                    });
-                }));
-
-                return future;
-            }).toList();
-
-            Futures.allOf(futures).thenRun(() -> {
-                logger.info(String.format("Read %d updates for user %s", futures.size(), username));
-                task.complete(null);
-                updatePackets.complete();
-            });
         })));
 
         return updatePackets;
@@ -127,12 +137,20 @@ public class Database {
      */
     public CompletableFuture<Void> deleteChannelUpdatedPacket(Name username, UUID channelId) {
         return updatesTaskQueue.runSuspendWriting(username, task -> {
-            Path directory = updatesDirectory.resolve(nameToFilename(username));
-            ioThreads.execute(r(() -> {
-                Path file = directory.resolve(channelId.toString());
-                Files.delete(file);
-                task.complete(null);
-            }));
+            try {
+                Path directory = updatesDirectory.resolve(nameToFilename(username));
+                ioThreads.execute(r(() -> {
+                    try {
+                        Path file = directory.resolve(channelId.toString());
+                        Files.delete(file);
+                        task.complete(null);
+                    } catch (Exception e) {
+                        task.completeExceptionally(e);
+                    }
+                }));
+            } catch (Exception e) {
+                task.completeExceptionally(e);
+            }
         });
     }
 
@@ -143,37 +161,45 @@ public class Database {
      */
     public CompletableFuture<Void> saveMessage(UUID channel, Message message) {
         return messagesTaskQueue.runSuspendWriting(channel, task -> {
-            Path directory = messagesDirectory.resolve(channel.toString());
-            Path messagesPath = directory.resolve("messages.txt");
-            Path indexPath = directory.resolve("index");
+            try {
+                Path directory = messagesDirectory.resolve(channel.toString());
+                Path messagesPath = directory.resolve("messages.txt");
+                Path indexPath = directory.resolve("index");
 
-            ioThreads.execute(r(() -> {
-                Files.createDirectories(directory);
-                long start;
-                long length;
-                try (RandomAccessFile raf = new RandomAccessFile(messagesPath.toFile(), "rw")) {
-                    // go to end of the file
-                    raf.seek(raf.length());
+                ioThreads.execute(r(() -> {
+                    try {
+                        Files.createDirectories(directory);
+                        long start;
+                        long length;
+                        try (RandomAccessFile raf = new RandomAccessFile(messagesPath.toFile(), "rw")) {
+                            // go to end of the file
+                            raf.seek(raf.length());
 
-                    start = raf.getFilePointer();
-                    raf.write(message.author().value().getBytes());
-                    newLine(raf);
-                    raf.write(message.content().getBytes());
-                    long end = raf.getFilePointer();
-                    length = end - start;
-                    newLine(raf);
-                    newLine(raf);
-                }
+                            start = raf.getFilePointer();
+                            raf.write(message.author().value().getBytes());
+                            newLine(raf);
+                            raf.write(message.content().getBytes());
+                            long end = raf.getFilePointer();
+                            length = end - start;
+                            newLine(raf);
+                            newLine(raf);
+                        }
 
-                ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 2);
-                buffer.putLong(start);
-                buffer.putLong(length);
+                        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES * 2);
+                        buffer.putLong(start);
+                        buffer.putLong(length);
 
-                Files.write(indexPath, buffer.array(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                        Files.write(indexPath, buffer.array(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 
-                logger.info(String.format("Saved message for channel %s: %s", channel, message));
-                task.complete(null);
-            }));
+                        logger.info(String.format("Saved message for channel %s: %s", channel, message));
+                        task.complete(null);
+                    } catch (Exception e) {
+                        task.completeExceptionally(e);
+                    }
+                }));
+            } catch (Exception e) {
+                task.completeExceptionally(e);
+            }
         });
     }
 
@@ -186,45 +212,53 @@ public class Database {
         Observable<Message> messages = new Observable<>();
 
         messagesTaskQueue.runSuspendReading(channel, task -> {
-            Path directory = messagesDirectory.resolve(channel.toString());
-            Path messagesPath = directory.resolve("messages.txt");
-            Path indexPath = directory.resolve("index");
+            try {
+                Path directory = messagesDirectory.resolve(channel.toString());
+                Path messagesPath = directory.resolve("messages.txt");
+                Path indexPath = directory.resolve("index");
 
-            ioThreads.execute(r(() -> {
-                long messagesRead = 0;
-                try (RandomAccessFile index = new RandomAccessFile(indexPath.toFile(), "r");
-                     RandomAccessFile messagesFile = new RandomAccessFile(messagesPath.toFile(), "r")) {
+                ioThreads.execute(r(() -> {
+                    long messagesRead = 0;
+                    try (RandomAccessFile index = new RandomAccessFile(indexPath.toFile(), "r");
+                         RandomAccessFile messagesFile = new RandomAccessFile(messagesPath.toFile(), "r")) {
 
-                    long startPosition = index.length() - (Long.BYTES * 2L * count);
-                    startPosition = startPosition > 0 ? startPosition : 0;
-                    index.seek(startPosition);
-                    while (index.getFilePointer() < index.length()) {
-                        byte[] startBytes = new byte[Long.BYTES];
-                        byte[] lengthBytes = new byte[Long.BYTES];
-                        index.read(startBytes);
-                        index.read(lengthBytes);
-                        long start = bytesToLong(startBytes);
-                        int length = (int) bytesToLong(lengthBytes);
+                        long startPosition = index.length() - (Long.BYTES * 2L * count);
+                        startPosition = startPosition > 0 ? startPosition : 0;
+                        index.seek(startPosition);
+                        while (index.getFilePointer() < index.length()) {
+                            byte[] startBytes = new byte[Long.BYTES];
+                            byte[] lengthBytes = new byte[Long.BYTES];
+                            index.read(startBytes);
+                            index.read(lengthBytes);
+                            long start = bytesToLong(startBytes);
+                            int length = (int) bytesToLong(lengthBytes);
 
-                        messagesFile.seek(start);
-                        byte[] messageEntry = new byte[length];
-                        messagesFile.read(messageEntry);
+                            messagesFile.seek(start);
+                            byte[] messageEntry = new byte[length];
+                            messagesFile.read(messageEntry);
 
-                        String messageString = new String(messageEntry);
-                        String[] messageSplit = messageString.split("\n");
-                        Name author = Name.of(messageSplit[0]);
-                        String content = messageSplit[1];
+                            String messageString = new String(messageEntry);
+                            String[] messageSplit = messageString.split("\n");
+                            Name author = Name.of(messageSplit[0]);
+                            String content = messageSplit[1];
 
-                        Message message = new Message(author, content);
-                        messages.onNext(message);
-                        messagesRead++;
+                            Message message = new Message(author, content);
+                            messages.onNext(message);
+                            messagesRead++;
+                        }
+                    } catch (FileNotFoundException ignore) {
+                    } catch (Exception e) {
+                        task.completeExceptionally(e);
+                        messages.completeWithException(e);
                     }
-                } catch (FileNotFoundException ignore) {
-                }
-                logger.info(String.format("Read %d messages for channel %s", messagesRead, channel));
-                task.complete(null);
-                messages.complete();
-            }));
+                    logger.info(String.format("Read %d messages for channel %s", messagesRead, channel));
+                    task.complete(null);
+                    messages.complete();
+                }));
+            } catch (Exception e) {
+                task.completeExceptionally(e);
+                messages.completeWithException(e);
+            }
         });
 
         return messages;
@@ -241,36 +275,50 @@ public class Database {
         CompletableFuture<String> future = new CompletableFuture<>();
         Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
 
-        fileCreationTaskQueue.<Void>runSuspendWriting(channel, fileCreationTask -> ioThreads.execute(r(() -> {
-            Files.createDirectories(filesDirectory);
+        fileCreationTaskQueue.runSuspendWriting(channel, fileCreationTask -> ioThreads.execute(r(() -> {
+            try {
+                Files.createDirectories(filesDirectory);
 
-            String fileName = nameProposition.toString();
-            while (true) {
-                Path filePath = filesDirectory.resolve(fileName);
-                try {
-                    var output = Files.newOutputStream(
-                            filePath,
-                            StandardOpenOption.CREATE_NEW,
-                            StandardOpenOption.WRITE
-                    );
+                String fileName = nameProposition.toString();
+                while (true) {
+                    Path filePath = filesDirectory.resolve(fileName);
+                    try {
+                        var output = Files.newOutputStream(
+                                filePath,
+                                StandardOpenOption.CREATE_NEW,
+                                StandardOpenOption.WRITE
+                        );
 
-                    final String fileNameFinal = fileName;
+                        final String fileNameFinal = fileName;
 
-                    fileTaskQueue.runSuspendWriting(filePath, task -> file.subscribe(1000, c(nextBytes -> {
-                        output.write(nextBytes);
-                        file.requestNext(1000);
-                    }), r(() -> {
-                        logger.info("Saved file: " + fileNameFinal);
-                        output.close();
-                        task.complete(null);
-                        future.complete(fileNameFinal);
-                    }), future::completeExceptionally));
+                        fileTaskQueue.runSuspendWriting(filePath, task -> file.subscribe(1000, c(nextBytes -> {
+                            try {
+                                output.write(nextBytes);
+                                file.requestNext(1000);
+                            } catch (Exception e) {
+                                task.completeExceptionally(e);
+                                future.completeExceptionally(e);
+                            }
+                        }), r(() -> {
+                            logger.info("Saved file: " + fileNameFinal);
+                            output.close();
+                            task.complete(null);
+                            future.complete(fileNameFinal);
+                        }), c(e -> {
+                            output.close();
+                            task.complete(null);
+                            future.completeExceptionally(e);
+                        })));
 
-                    fileCreationTask.complete(null);
-                    break;
-                } catch (FileAlreadyExistsException e) {
-                    fileName = StringUtils.incrementFileName(fileName);
+                        fileCreationTask.complete(null);
+                        break;
+                    } catch (FileAlreadyExistsException e) {
+                        fileName = StringUtils.incrementFileName(fileName);
+                    }
                 }
+            } catch (Exception e) {
+                fileCreationTask.completeExceptionally(e);
+                future.completeExceptionally(e);
             }
         })));
 
@@ -303,15 +351,15 @@ public class Database {
                                 }
                             } catch (IOException e) {
                                 fileTask.complete(null);
-                                consumer.onException(e);
+                                consumer.completeWithException(e);
                             }
                         }, () -> fileTask.complete(null), e -> {
                             fileTask.complete(null);
-                            consumer.onException(e);
+                            consumer.completeWithException(e);
                         });
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         fileTask.complete(null);
-                        consumer.onException(e);
+                        consumer.completeWithException(e);
                     }
                 })));
 
@@ -333,7 +381,7 @@ public class Database {
                         long size = Files.size(path);
                         task.complete(null);
                         result.complete(size);
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         task.complete(null);
                         result.completeExceptionally(e);
                     }
@@ -345,7 +393,6 @@ public class Database {
     private static void newLine(RandomAccessFile raf) throws IOException {
         raf.write("\n".getBytes());
     }
-
 
     private static long bytesToLong(byte[] bytes) {
         ByteBuffer buffer = ByteBuffer.allocate(bytes.length);

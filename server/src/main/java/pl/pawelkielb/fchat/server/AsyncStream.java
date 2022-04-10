@@ -49,6 +49,10 @@ public class AsyncStream<R, T> {
         requestNext(initialRequest);
     }
 
+    public void subscribe(R initialRequest, Consumer<T> observer, Runnable completionListener) {
+        subscribe(initialRequest, observer, completionListener, null);
+    }
+
     public void close() {
         producer.complete();
     }

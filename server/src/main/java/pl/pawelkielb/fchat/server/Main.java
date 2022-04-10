@@ -7,6 +7,7 @@ import pl.pawelkielb.fchat.PacketEncoder;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -23,14 +24,14 @@ public class Main {
                         nextPacket(connection, clientHandler)));
     }
 
-    public static void startServer(int port) throws IOException {
+    public static void startServer(int port, Path databaseRoot) throws IOException {
         int cpusCount = Runtime.getRuntime().availableProcessors();
         Executor workerThreads = Executors.newFixedThreadPool(Math.min(cpusCount, 32));
         Executor ioThreads = Executors.newFixedThreadPool(1000);
 
         PacketEncoder packetEncoder = new PacketEncoder();
         Logger logger = new ConsoleLogger(ioThreads);
-        Database database = new Database(workerThreads, ioThreads, Paths.get("."), packetEncoder, logger);
+        Database database = new Database(workerThreads, ioThreads, databaseRoot, packetEncoder, logger);
         MessageManager messageManager = new MessageManager(database);
 
         ServerSocket server = new ServerSocket(port);
@@ -49,6 +50,6 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        startServer(1337);
+        startServer(1337, Paths.get("."));
     }
 }
