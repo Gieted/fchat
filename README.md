@@ -51,7 +51,7 @@ clients in a separate directories.
 
 Creates a fchat.properties file in the current directory.
 
-```bash
+```
 fchat init
 ```
 
@@ -60,7 +60,7 @@ fchat init
 Creates a new group channel. You can use `cd` command to enter the channel. Other users must use `fchat sync` to see the
 channel.
 
-```bash
+```
 fchat create [name] (usernames...)
 
 e.g. fhcat create "Small Talks" ben steven
@@ -74,7 +74,7 @@ e.g. fhcat create "Small Talks" ben steven
 Creates a new private channel. You can use `cd` command to enter the channel. The other user must use `fchat sync` to
 see the channel.
 
-```bash
+```
 fchat priv [username]
 
 e.g. fchat priv christine
@@ -86,7 +86,7 @@ e.g. fchat priv christine
 
 Updates the channels list.
 
-```bash
+```
 fchat sync
 ```
 
@@ -94,7 +94,7 @@ fchat sync
 
 Sends a message to a channel. To use the commands you have to first `cd` to a channel directory.
 
-```bash
+```
 fchat send [message...]
 
 e.g. fchat send Hello Threre!
@@ -104,7 +104,7 @@ e.g. fchat send Hello Threre!
 
 Reads a messages from a channel. To use the commands you have to first `cd` to a channel directory.
 
-```bash
+```
 fchat read (count)
 ```
 
@@ -114,7 +114,7 @@ fchat read (count)
 
 Sends a file to a channel. To use the commands you have to first `cd` to a channel directory.
 
-```bash
+```
 fchat sendfile [path]
 ```
 
@@ -125,7 +125,7 @@ fchat sendfile [path]
 Downloads a file from a channel. The file will be saved in the current directory. To use the commands you have to
 first `cd` to a channel directory.
 
-```bash
+```
 fchat download [name]
 ```
 
