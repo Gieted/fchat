@@ -4,6 +4,9 @@ import pl.pawelkielb.fchat.data.Message;
 
 import java.util.UUID;
 
+/**
+ * A central entity to which all messages are pushed to.
+ */
 public class MessageManager {
     private final Database database;
 
