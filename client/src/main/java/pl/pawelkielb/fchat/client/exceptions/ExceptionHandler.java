@@ -43,13 +43,13 @@ public abstract class ExceptionHandler {
 
     public static void onNetworkException(NetworkException e) {
         checkDevMode(e);
-        printError(getExceptionMessage(new RuntimeException("There was an error while sending data", e)));
+        printError(getExceptionMessage(e));
         System.exit(7);
     }
 
     public static void onServerDisconnected(DisconnectedException e) {
         checkDevMode(e);
-        printError(getExceptionMessage("The server has unexpectedly disconnected", e));
+        printError(getExceptionMessage(e));
         System.exit(8);
     }
 

@@ -182,7 +182,7 @@ public class Connection {
 
                 future.complete(null);
             } catch (IOException e) {
-                future.completeExceptionally(new DisconnectedException());
+                future.completeExceptionally(new DisconnectedException(e));
             }
         });
 
@@ -205,7 +205,6 @@ public class Connection {
 
                 if (arraySizeBytes.length < 4) {
                     readLock = new ReentrantLock();
-                    future.completeExceptionally(new DisconnectedException());
                     return;
                 }
 
@@ -216,7 +215,7 @@ public class Connection {
                 future.complete(bytes);
             } catch (IOException e) {
                 readLock = new ReentrantLock();
-                future.completeExceptionally(new DisconnectedException());
+                future.completeExceptionally(new DisconnectedException(e));
             }
         });
 
