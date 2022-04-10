@@ -206,7 +206,7 @@ public class Client {
         var totalSize = Files.size(path);
         long bytesSent = 0;
 
-        var sendFilePacket = new SendFilePacket(channel, path.getFileName().toString(), Files.size(path));
+        var sendFilePacket = new SendFilePacket(channel, Name.of(path.getFileName().toString()), Files.size(path));
         doSync(() -> connection.sendPacket(sendFilePacket));
 
         try (InputStream inputStream = Files.newInputStream(path)) {

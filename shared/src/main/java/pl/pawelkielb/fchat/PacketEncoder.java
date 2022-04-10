@@ -13,6 +13,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
+
+/**
+ * Converts packets to bytes and vice-versa.
+ */
 public class PacketEncoder {
     public byte[] toBytes(Packet packet) {
         byte[] packetBytes;
@@ -116,7 +120,7 @@ public class PacketEncoder {
         Properties properties = new Properties();
         properties.setProperty("type", "SendFile");
         properties.setProperty("channel", packet.channel().toString());
-        properties.setProperty("name", packet.name());
+        properties.setProperty("name", packet.name().toString());
         properties.setProperty("size", String.valueOf(packet.size()));
         String packetString = propertiesToString(properties);
 
@@ -208,7 +212,7 @@ public class PacketEncoder {
 
             case "SendFile" -> {
                 UUID channel = UUID.fromString(properties.getProperty("channel"));
-                String name = properties.getProperty("name");
+                Name name = Name.of(properties.getProperty("name"));
                 long size = Long.parseLong(properties.getProperty("size"));
 
                 yield new SendFilePacket(channel, name, size);

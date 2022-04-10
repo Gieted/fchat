@@ -237,14 +237,14 @@ public class Database {
      *                        and the async stream should publish the requested count of bytes to the stream.
      * @return a future resolving to a name, under which the file was saved
      */
-    public CompletableFuture<String> saveFile(UUID channel, String nameProposition, AsyncStream<Integer, byte[]> file) {
+    public CompletableFuture<String> saveFile(UUID channel, Name nameProposition, AsyncStream<Integer, byte[]> file) {
         CompletableFuture<String> future = new CompletableFuture<>();
         Path filesDirectory = messagesDirectory.resolve(channel.toString()).resolve("files");
 
         fileCreationTaskQueue.<Void>runSuspendWriting(channel, fileCreationTask -> ioThreads.execute(r(() -> {
             Files.createDirectories(filesDirectory);
 
-            String fileName = nameProposition;
+            String fileName = nameProposition.toString();
             while (true) {
                 Path filePath = filesDirectory.resolve(fileName);
                 try {
@@ -279,10 +279,10 @@ public class Database {
      * @return An async stream of the file.
      * Consumer must send byte count as a request and the database will respond will the requested count of bytes.
      */
-    public AsyncStream<Integer, byte[]> getFile(UUID channel, String name) {
+    public AsyncStream<Integer, byte[]> getFile(UUID channel, Name name) {
         Observable<Integer> producer = new Observable<>();
         Observable<byte[]> consumer = new Observable<>();
-        Path path = messagesDirectory.resolve(channel.toString()).resolve("files").resolve(name);
+        Path path = messagesDirectory.resolve(channel.toString()).resolve("files").resolve(name.toString());
 
         fileCreationTaskQueue.runReading(channel, () ->
                 fileTaskQueue.runSuspendReading(path, c(fileTask -> {
@@ -319,9 +319,9 @@ public class Database {
      * @param name    a name of the file
      * @return A future resolving to the file size
      */
-    public CompletableFuture<Long> getFileSize(UUID channel, String name) {
+    public CompletableFuture<Long> getFileSize(UUID channel, Name name) {
         CompletableFuture<Long> result = new CompletableFuture<>();
-        Path path = messagesDirectory.resolve(channel.toString()).resolve("files").resolve(name);
+        Path path = messagesDirectory.resolve(channel.toString()).resolve("files").resolve(name.toString());
 
         fileCreationTaskQueue.runReading(channel, () ->
                 fileTaskQueue.runSuspendReading(path, task -> ioThreads.execute(() -> {

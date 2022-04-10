@@ -1,10 +1,12 @@
 package pl.pawelkielb.fchat.packets;
 
+import pl.pawelkielb.fchat.data.Name;
+
 import java.util.UUID;
 
 import static java.util.Objects.requireNonNull;
 
-public record SendFilePacket(UUID channel, String name, long size) implements Packet {
+public record SendFilePacket(UUID channel, Name name, long size) implements Packet {
     public SendFilePacket {
         requireNonNull(channel);
         requireNonNull(name);
