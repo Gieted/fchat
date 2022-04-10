@@ -97,10 +97,6 @@ public class ClientHandler {
 
         checkLoggedIn();
 
-        ChannelUpdatedPacket channelUpdatedPacket = new ChannelUpdatedPacket(
-                packet.channel(),
-                packet.name()
-        );
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         List<Name> members = new ArrayList<>(packet.members());
@@ -108,6 +104,23 @@ public class ClientHandler {
         for (var member : members) {
             CompletableFuture<Void> future = new CompletableFuture<>();
             futures.add(future);
+
+            Name channelName;
+            if (packet.name() != null) {
+                channelName = packet.name();
+            } else {
+                if (packet.members().size() == 1) {
+                    channelName = username == member ? packet.members().get(0) : username;
+                } else {
+                    channelName = Name.of("Group channel");
+                }
+            }
+
+            ChannelUpdatedPacket channelUpdatedPacket = new ChannelUpdatedPacket(
+                    packet.channel(),
+                    channelName
+            );
+
             database.saveChannelUpdatedPacket(member, channelUpdatedPacket).thenRun(() -> future.complete(null));
         }
         Futures.allOf(futures).thenRun(() -> handlePacketFuture.complete(null));

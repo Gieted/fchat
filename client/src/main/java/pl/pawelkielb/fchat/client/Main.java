@@ -15,7 +15,7 @@ import static pl.pawelkielb.fchat.client.Database.readChannelConfig;
 
 
 public class Main {
-    public static final boolean DEV_MODE = System.getProperty("DEV_MODE") != null;
+    public static final boolean DEV_MODE = System.getenv("DEV_MODE") != null;
 
     public static void main(String[] args) {
         try {

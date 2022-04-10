@@ -81,7 +81,9 @@ public class PacketEncoder {
         Properties properties = new Properties();
         properties.setProperty("type", "UpdateChannel");
         properties.setProperty("channel", packet.channel().toString());
-        properties.setProperty("name", packet.name().value());
+        if (packet.name() != null) {
+            properties.setProperty("name", packet.name().value());
+        }
         properties.setProperty("members", packet.members().stream().map(Name::value).collect(Collectors.joining(",")));
         String packetString = propertiesToString(properties);
 
@@ -176,7 +178,8 @@ public class PacketEncoder {
 
             case "UpdateChannel" -> {
                 UUID channelId = UUID.fromString(properties.getProperty("channel"));
-                Name channelName = Name.of(properties.getProperty("name"));
+                String channelString = properties.getProperty("name");
+                Name channelName = channelString != null ? Name.of(channelString) : null;
                 String membersString = properties.getProperty("members");
 
                 List<Name> members;
