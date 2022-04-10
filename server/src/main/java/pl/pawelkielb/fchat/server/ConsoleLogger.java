@@ -10,8 +10,7 @@ import java.util.concurrent.Executor;
  * A {@link Logger} that logs to a console. It's thread-safe.
  */
 public class ConsoleLogger implements Logger {
-
-    private int i = 1;
+    private long i = 1;
     private final TaskQueue taskQueue = new TaskQueue();
     private final Executor ioThreads;
 
