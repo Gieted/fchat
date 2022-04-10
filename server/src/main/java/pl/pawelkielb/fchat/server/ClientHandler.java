@@ -15,6 +15,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static pl.pawelkielb.fchat.Functions.*;
+import static pl.pawelkielb.fchat.TransferSettings.fileChunkSizeInBytes;
 
 /**
  * Handles a single client's requests. It's not thread-safe.
@@ -163,7 +164,7 @@ public class ClientHandler {
             file.subscribe(1000000, nextBytes -> {
                 connection.sendBytes(nextBytes).exceptionally(cvf(t -> file.close()));
                 connection.readPacket()
-                        .thenRun(() -> file.requestNext(1000000))
+                        .thenRun(() -> file.requestNext(fileChunkSizeInBytes))
                         .exceptionally(cvf(t -> file.close()));
             }, () -> {
                 connection.sendBytes(new byte[0]);
