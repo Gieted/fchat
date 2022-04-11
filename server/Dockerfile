@@ -4,7 +4,7 @@ COPY ./* /build
 
 WORKDIR /build
 
-./gradlew server:installDist
+RUN ./gradlew server:installDist
 
 COPY build/install/server /app
 
