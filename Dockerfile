@@ -1,5 +1,7 @@
 FROM openjdk:17
 
+RUN apt update && apt install findutils
+
 COPY . /build/
 
 WORKDIR /build
