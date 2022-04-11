@@ -58,6 +58,8 @@ public class Main {
             } catch (NumberFormatException ignore) {
             }
         }
+
+        System.out.println("Starting the server at port " + port);
         startServer(port, Paths.get("."));
     }
 }
