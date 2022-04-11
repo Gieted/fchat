@@ -6,7 +6,7 @@ WORKDIR /build
 
 RUN chmod +x ./gradlew && ./gradlew server:installDist
 
-RUN mkdir /app/ && cp server/build/install/server/* /app/
+RUN mkdir /app/ && cp -r server/build/install/server/* /app/
 
 WORKDIR /app
 
