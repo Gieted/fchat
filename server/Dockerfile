@@ -1,12 +1,12 @@
 FROM openjdk:17
 
-COPY ./* /build
+COPY ./* /build/
 
 WORKDIR /build
 
 RUN ./gradlew server:installDist
 
-COPY build/install/server /app
+COPY build/install/server /app/
 
 WORKDIR /app
 
