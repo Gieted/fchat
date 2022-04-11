@@ -14,7 +14,7 @@ Pre-requirements:
 
 The installation procedure:
 
-1. Download the latest release from [here]().
+1. Download the latest release from [here](https://github.com/pawelkielb/fchat/releases/download/1.0.0/client.zip).
 2. Unpack it to any folder you wish.
 3. Add `bin/` folder to your `PATH`.
 4. Restart the computer or restart explorer in the task manager.
