@@ -1,7 +1,5 @@
 FROM openjdk:17-buster
 
-RUN apt-get update && apt-get install findutils
-
 COPY . /build/
 
 WORKDIR /build
