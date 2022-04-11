@@ -92,7 +92,7 @@ fchat sync
 
 ### fchat send
 
-Sends a message to a channel. To use the commands you have to first `cd` to a channel directory.
+Sends a message to a channel. To use the command you have to first `cd` to a channel directory.
 
 ```
 fchat send [message...]
@@ -102,7 +102,7 @@ e.g. fchat send Hello Threre!
 
 ### fchat read
 
-Reads a messages from a channel. To use the commands you have to first `cd` to a channel directory.
+Reads a messages from a channel. To use the command you have to first `cd` to a channel directory.
 
 ```
 fchat read (count)
@@ -112,7 +112,7 @@ fchat read (count)
 
 ### fchat sendfile
 
-Sends a file to a channel. To use the commands you have to first `cd` to a channel directory.
+Sends a file to a channel. To use the command you have to first `cd` to a channel directory.
 
 ```
 fchat sendfile [path]
@@ -122,7 +122,7 @@ fchat sendfile [path]
 
 ### fchat download
 
-Downloads a file from a channel. The file will be saved in the current directory. To use the commands you have to
+Downloads a file from a channel. The file will be saved in the current directory. To use the command you have to
 first `cd` to a channel directory.
 
 ```
