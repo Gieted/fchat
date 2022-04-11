@@ -6,7 +6,7 @@ WORKDIR /build
 
 RUN ./gradlew server:installDist
 
-RUN cp -r server/build/install/server/* /app/
+RUN cp server/build/install/server/* /app/ -r
 
 WORKDIR /app
 
