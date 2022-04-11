@@ -2,7 +2,7 @@ package pl.pawelkielb.fchat.client;
 
 /**
  * Prints a progress bar to a {@link Console}.
- * <p>
+ *
  * e.g. \ =>                    |5%
  */
 public class ProgressBar {
