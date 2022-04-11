@@ -1,6 +1,6 @@
-FROM openjdk:17
+FROM openjdk:17-buster
 
-RUN apk add findutils
+RUN apt-get update && apt-get install findutils
 
 COPY . /build/
 
