@@ -139,4 +139,4 @@ In order to run the server locally:
 
 1. Clone the repository
 2. Run `./gradlew server:run`
-3. The server port is always `1337`
+3. A default server port is 1337. It can be changed using a `PORT` environmental variable

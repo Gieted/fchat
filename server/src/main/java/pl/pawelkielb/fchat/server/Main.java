@@ -50,6 +50,14 @@ public class Main {
     }
 
     public static void main(String[] args) throws IOException {
-        startServer(1337, Paths.get("."));
+        int port = 1337;
+        String portString = System.getenv("PORT");
+        if (portString != null) {
+            try {
+                port = Integer.parseInt(portString);
+            } catch (NumberFormatException ignore) {
+            }
+        }
+        startServer(port, Paths.get("."));
     }
 }
