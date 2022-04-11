@@ -97,9 +97,7 @@ class ClientTest : WordSpec({
 
             verify {
                 connection.sendPacket(match {
-                    it is UpdateChannelPacket && it.name == paul && it.members == listOf(
-                        paul
-                    )
+                    it is UpdateChannelPacket && it.name == null && it.members == listOf(paul)
                 })
             }
         }
