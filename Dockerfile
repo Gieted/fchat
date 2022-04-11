@@ -10,4 +10,4 @@ RUN mkdir /app/ && cp -r server/build/install/server/* /app/
 
 WORKDIR /app
 
-CMD bin/server
+CMD /app/bin/server
